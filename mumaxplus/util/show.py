@@ -325,7 +325,8 @@ class _Plotter:
     user.
     """
     def __init__(self, field_quantity, out_of_plane_axis, layer, component, geometry,
-                 file_name, show, ax, imshow_cmap, imshow_symmetric_clim, enable_cbar,
+                 file_name, show, ax, figsize,
+                 imshow_cmap, imshow_symmetric_clim, enable_cbar,
                  quiver, arrow_size, quiver_cmap, quiver_symmetric_clim,
                  **quiver_kwargs):
         """see the docstring of :func:`plot_field`."""
@@ -399,7 +400,7 @@ class _Plotter:
 
         # ax: use or create
         if ax is None:
-            _, self.ax = _plt.subplots()
+            _, self.ax = _plt.subplots(figsize=figsize)
         else:
             self.ax = ax
 
@@ -603,7 +604,7 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
                out_of_plane_axis: str = 'z', layer: int = 0,
                component: Optional[int] = None, geometry: Optional[_np.ndarray] = None,
                file_name: Optional[str] = None, show: Optional[bool] = None,
-               ax: Optional[Axes] = None,
+               ax: Optional[Axes] = None, figsize: Optional[tuple[float, float]] = None,
                imshow_cmap: str = None, imshow_symmetric_clim: bool = False,
                enable_cbar: bool = True,
                quiver: bool = None, arrow_size: float = 16.,
@@ -655,6 +656,9 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         The Axes instance to plot onto. If None (default), new Figure and Axes
         instances will be created.
 
+    figsize : tuple[float] of size 2, optional
+        The size of the figure, if a new figure has to be created.
+
     imshow_cmap : string, optional
         A colormap to use for the image if a scalar field is plotted.
 
@@ -700,7 +704,8 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         The resulting Axes on which is plotted.
     """
     plotter = _Plotter(field_quantity, out_of_plane_axis, layer, component, geometry,
-                       file_name, show, ax, imshow_cmap, imshow_symmetric_clim, enable_cbar,
+                       file_name, show, ax, figsize,
+                       imshow_cmap, imshow_symmetric_clim, enable_cbar,
                        quiver, arrow_size, quiver_cmap, quiver_symmetric_clim,
                        **quiver_kwargs)
     return plotter.plot()

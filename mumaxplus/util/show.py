@@ -394,6 +394,8 @@ class _Plotter:
                 self.show = True
             else:
                 self.show = False
+        else:
+            self.show = show
 
         # ax: use or create
         if ax is None:

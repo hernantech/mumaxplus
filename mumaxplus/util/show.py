@@ -327,7 +327,7 @@ class _Plotter:
     def __init__(self, field_quantity, out_of_plane_axis, layer, component, geometry,
                  file_name, show, ax, figsize, title,
                  imshow_cmap, imshow_symmetric_clim, enable_cbar,
-                 quiver, arrow_size, arrow_width, quiver_cmap, quiver_symmetric_clim,
+                 quiver, arrow_size, quiver_cmap, quiver_symmetric_clim,
                  **quiver_kwargs):
         """see the docstring of :func:`plot_field`."""
 
@@ -431,7 +431,6 @@ class _Plotter:
         if self.quiver:
             self.arrow_size = arrow_size
             self.arrow_size_fraction = 3/4  # make arrow smaller than max
-            self.arrow_width = arrow_width
             self.quiver_cmap = quiver_cmap
             self.quiver_symmetric_clim = quiver_symmetric_clim
             self.quiver_kwargs = quiver_kwargs.copy()  # leave user input alone
@@ -497,23 +496,17 @@ class _Plotter:
         sampled_field = downsample(self.field_2D, new_size=(nx_new, ny_new))
         U, V = sampled_field[self.hor_axis_idx], sampled_field[self.vert_axis_idx]
 
-        # scale arrows correctly
-        max_allowed_len = self.arrow_size * self.arrow_size_fraction  # the longest allowed vector in xy units
-        width = self.arrow_width
-        if self.quantity:
-            cellsize = self.quantity._impl.system.cellsize
-            minc = min(cellsize[self.hor_axis_idx], cellsize[self.vert_axis_idx])
-            max_allowed_len *= minc
-            width *= minc
-        
-        # set kwargs together
+        # scale arrows correctly, but set kwargs together
         if not "scale" in self.quiver_kwargs and not "scale_units" in self.quiver_kwargs:
+            # the longest allowed vector in xy units
+            max_allowed_len = self.arrow_size * self.arrow_size_fraction
+            if self.quantity:
+                cellsize = self.quantity._impl.system.cellsize
+                max_allowed_len *= min(cellsize[self.hor_axis_idx], cellsize[self.vert_axis_idx])
+
             max_IP_norm = _np.max(_np.sqrt(U**2 + V**2))  # longest in-plane arrow in UV units
             self.quiver_kwargs["scale"] = max_IP_norm / max_allowed_len
             self.quiver_kwargs["scale_units"] = "xy"
-        if not "width" in self.quiver_kwargs and not "units" in self.quiver_kwargs:
-            self.quiver_kwargs["width"] = width
-            self.quiver_kwargs["units"] = "xy"
 
         # plot requested quiver
         if self.quiver_cmap == "mumax3":  # HSL with rgb
@@ -661,8 +654,7 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
                ax: Optional[Axes] = None, figsize: Optional[tuple[float, float]] = None,
                title: Optional[str] = None,
                imshow_cmap: str = None, imshow_symmetric_clim: bool = False,
-               enable_cbar: bool = True,
-               quiver: bool = None, arrow_size: float = 16., arrow_width: float = 1.,
+               enable_cbar: bool = True, quiver: bool = None, arrow_size: float = 16.,
                quiver_cmap: Optional[str]= None, quiver_symmetric_clim: bool = True,
                **quiver_kwargs) -> Axes:
     """Plot a :func:`mumaxplus.FieldQuantity` or `numpy.ndarray`
@@ -740,10 +732,6 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         an area of `arrow_size` by `arrow_size`.
         This is only relevant for fieldquantities with 3 components.
 
-    arrow_size : float, default=1
-        Width of an arrow as a number of cells.
-        This is only relevant for fieldquantities with 3 components.
-        
     quiver_cmap : string, optional
         A colormap to use for the quiver. By default, no colormap is used, so
         the arrows are a solid color. If set to "mumax3", the 3D vector data is
@@ -769,8 +757,8 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
     plotter = _Plotter(field_quantity, out_of_plane_axis, layer, component, geometry,
                        file_name, show, ax, figsize, title,
                        imshow_cmap, imshow_symmetric_clim, enable_cbar,
-                       quiver, arrow_size, arrow_width, quiver_cmap,
-                       quiver_symmetric_clim, **quiver_kwargs)
+                       quiver, arrow_size, quiver_cmap, quiver_symmetric_clim,
+                       **quiver_kwargs)
     return plotter.plot()
 
 

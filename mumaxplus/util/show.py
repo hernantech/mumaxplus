@@ -586,9 +586,6 @@ class _Plotter:
             # axis label ticks with appropriate numbers according to prefix
             self.ax.xaxis.set_major_formatter(UnitScalarFormatter(x_prefix, "m"))
             self.ax.yaxis.set_major_formatter(UnitScalarFormatter(y_prefix, "m"))
-
-            # set title to field_quantity name
-            self.ax.set_title(self.quantity.name)  # TODO: add slice, component, layer, ...
         else:
             self.ax.set_xlabel(f"${'xyz'[self.hor_axis_idx]}$ (index)")
             self.ax.set_ylabel(f"${'xyz'[self.vert_axis_idx]}$ (index)")
@@ -620,7 +617,7 @@ class _Plotter:
 
             # combine into title
             title = component + " of " + name if component and name else component + name
-            title = title + " in " + layer if title and layer else layer
+            title = title + " in " + layer if title and layer else title + layer
 
             if title:
                 self.ax.set_title(title)
@@ -637,7 +634,6 @@ class _Plotter:
         self.plot_quiver()
 
         self.dress_axes()
-        # TODO: make a beautiful title
 
         if self.file_name:
             self.ax.figure.savefig(self.file_name)

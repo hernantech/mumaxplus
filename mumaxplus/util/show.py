@@ -399,8 +399,10 @@ class _Plotter:
             self.show = show
 
         # ax: use or create
+        self.rescale_figsize = False
         if ax is None:
             _, self.ax = _plt.subplots(figsize=figsize)
+            if figsize is None: self.rescale_figsize = True
         else:
             self.ax = ax
 
@@ -594,8 +596,16 @@ class _Plotter:
         
         # use "equal" aspect ratio if not too rectangular
         if ((right - left) / (top - bottom) < max_width_over_height_ratio and
-            (top - bottom) / (right - left) < max_height_over_width_ratio):
+            (hw_ratio := (top - bottom) / (right - left)) < max_height_over_width_ratio):
             self.ax.set_aspect("equal")
+            
+            if self.rescale_figsize:
+                fig = self.ax.figure
+                w0, h0 = fig.get_size_inches()
+                hw_ratio = hw_ratio ** 0.7  # get closer to square ratio
+                w1 = _np.sqrt(w0 * h0 / hw_ratio)  # keep area the same
+                h1 = w1 * hw_ratio
+                fig.set_size_inches(w1, h1)
         else:
             self.ax.set_aspect("auto")
 

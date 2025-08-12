@@ -325,7 +325,7 @@ class _Plotter:
     user.
     """
     def __init__(self, field_quantity, out_of_plane_axis, layer, component, geometry,
-                 file_name, show, ax, figsize,
+                 file_name, show, ax, figsize, title,
                  imshow_cmap, imshow_symmetric_clim, enable_cbar,
                  quiver, arrow_size, quiver_cmap, quiver_symmetric_clim,
                  **quiver_kwargs):
@@ -403,6 +403,9 @@ class _Plotter:
             _, self.ax = _plt.subplots(figsize=figsize)
         else:
             self.ax = ax
+
+        # title
+        self.title = title
 
         # enable cbar
         self.enable_cbar = enable_cbar
@@ -540,9 +543,6 @@ class _Plotter:
 
     def dress_axes(self, max_width_over_height_ratio=6., max_height_over_width_ratio=3.):
         # TODO: docstring
-        # TODO: better title using name
-        # TODO: geometry for filter field??
-        # TODO: check validity of axis indices
         
         left, right, bottom, top = _quantity_2D_extent(
             self.quantity if self.quantity else self.field,
@@ -580,6 +580,32 @@ class _Plotter:
         else:
             self.ax.set_aspect("auto")
 
+        # title
+        # e.g.: component 2 of ferromagnet_1:magnetization in "z"-layer 16
+        if self.title is None:  # make default title
+            # component if not in colorbar and non-trivial
+            component = ""
+            if not self.vector_image_bool and not self.enable_cbar and self.ncomp > 1:
+                component = f"component {self.comp}"
+
+            # name of quantity  # TODO: let user give name?
+            name = self.quantity.name if self.quantity else ""
+
+            # layer of OoP axis if non-trivial
+            layer = ""
+            if self.field.shape[3 - self.OoP_axis_idx] > 1:
+                layer = f"\"{self.out_of_plane_axis}\"-layer {self.layer}"
+
+            # combine into title
+            title = component + " of " + name if component and name else component + name
+            title = title + " in " + layer if title and layer else layer
+
+            if title:
+                self.ax.set_title(title)
+
+        elif self.title:  # user set title
+            self.ax.set_title(self.title)
+
 
     def plot(self) -> Axes:
         # TODO: docstring
@@ -605,6 +631,7 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
                component: Optional[int] = None, geometry: Optional[_np.ndarray] = None,
                file_name: Optional[str] = None, show: Optional[bool] = None,
                ax: Optional[Axes] = None, figsize: Optional[tuple[float, float]] = None,
+               title: Optional[str] = None,
                imshow_cmap: str = None, imshow_symmetric_clim: bool = False,
                enable_cbar: bool = True,
                quiver: bool = None, arrow_size: float = 16.,
@@ -659,6 +686,10 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
     figsize : tuple[float] of size 2, optional
         The size of the figure, if a new figure has to be created.
 
+    title : str, optional
+        The title of the Axes. `None` will generate a default title, while an
+        empty string won't set any title.
+
     imshow_cmap : string, optional
         A colormap to use for the image if a scalar field is plotted.
 
@@ -704,7 +735,7 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         The resulting Axes on which is plotted.
     """
     plotter = _Plotter(field_quantity, out_of_plane_axis, layer, component, geometry,
-                       file_name, show, ax, figsize,
+                       file_name, show, ax, figsize, title,
                        imshow_cmap, imshow_symmetric_clim, enable_cbar,
                        quiver, arrow_size, quiver_cmap, quiver_symmetric_clim,
                        **quiver_kwargs)

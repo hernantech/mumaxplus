@@ -329,7 +329,8 @@ class _Plotter:
                  file_name, show, ax, figsize, title, xlabel, ylabel,
                  imshow_symmetric_clim, imshow_kwargs,
                  enable_colorbar, colorbar_kwargs,
-                 quiver, arrow_size, quiver_cmap, quiver_symmetric_clim, quiver_kwargs):
+                 enable_quiver, arrow_size, quiver_cmap, quiver_symmetric_clim,
+                 quiver_kwargs):
         """see the docstring of :func:`plot_field`."""
 
         # check field_quantity input
@@ -437,15 +438,15 @@ class _Plotter:
 
         # with or without quiver?
         if self.ncomp == 3:  # vector
-            if quiver is not None:  # let user decide
-                self.quiver = quiver
+            if enable_quiver is not None:  # let user decide
+                self.enable_quiver = enable_quiver
             else:  # or add arrows if no specific comp given
-                self.quiver = self.comp is None
+                self.enable_quiver = self.comp is None
         else:  # no quiver possible
-            self.quiver = False
+            self.enable_quiver = False
 
         # save relevant quiver information if needed
-        if self.quiver:
+        if self.enable_quiver:
             self.arrow_size = arrow_size
             self.arrow_size_fraction = 3/4  # make arrow smaller than max
             self.quiver_cmap = quiver_cmap
@@ -505,7 +506,7 @@ class _Plotter:
             self.add_cbar(im, name=cname)
     
     def plot_quiver(self):
-        if not self.quiver:
+        if not self.enable_quiver:
             return
 
         # downsample 2D field
@@ -699,7 +700,7 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
                title: Optional[str] = None, xlabel: Optional[str] = None, ylabel: Optional[str] = None,
                imshow_symmetric_clim: bool = False, imshow_kwargs: dict = {},
                enable_colorbar: bool = True, colorbar_kwargs: dict = {},
-               quiver: bool = None, arrow_size: float = 16.,
+               enable_quiver: bool = None, arrow_size: float = 16.,
                quiver_cmap: Optional[str]= None, quiver_symmetric_clim: bool = True,
                quiver_kwargs : dict = {}) -> Axes:
     """Plot a :func:`mumaxplus.FieldQuantity` or `numpy.ndarray`
@@ -778,7 +779,7 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
     colorbar_kwargs : dict, default={}
         Keyword arguments to pass to `matplotlib.figure.Figure.colorbar`.
 
-    quiver : bool, optional
+    enable_quiver : bool, optional
         Whether to plot arrows on top of the colored image. If None (default),
         arrows are only added if no specific component for the image has been
         given.
@@ -817,7 +818,7 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
                        file_name, show, ax, figsize, title, xlabel, ylabel,
                        imshow_symmetric_clim, imshow_kwargs,
                        enable_colorbar, colorbar_kwargs,
-                       quiver, arrow_size, quiver_cmap, quiver_symmetric_clim,
+                       enable_quiver, arrow_size, quiver_cmap, quiver_symmetric_clim,
                        quiver_kwargs)
     return plotter.plot()
 
@@ -864,7 +865,7 @@ def show_magnet_geometry(magnet):
     plotter.show()
 
 
-def show_field_3D(quantity, cmap="mumax3", quiver=True):
+def show_field_3D(quantity, cmap="mumax3", enable_quiver=True):
     """Plot a :func:`mumaxplus.FieldQuantity` with 3 components as a vectorfield.
 
     Parameters
@@ -875,7 +876,7 @@ def show_field_3D(quantity, cmap="mumax3", quiver=True):
         A colormap to use. By default the mumax³ colormap is used.
         Any matplotlib colormap can also be given to color the vectors according
         to their z-component. It's best to use diverging colormaps, like "bwr".
-    quiver : boolean, optional, default: True
+    enable_quiver : boolean, optional, default: True
         If set to True, a cone is placed at each cell indicating the direction.
         If False, colored voxels are used instead.
     """
@@ -906,7 +907,7 @@ def show_field_3D(quantity, cmap="mumax3", quiver=True):
     image_data.cell_data["geom"] = _np.float32(quantity._impl.system.geometry).flatten("C")
     threshed = image_data.threshold_percent(0.5, scalars="geom")
 
-    if quiver:  # use cones to display direction
+    if enable_quiver:  # use cones to display direction
         cres = 6  # number of vertices in cone base
         cone = _pv.Cone(center=(1/4, 0, 0), radius=0.32, height=1, resolution=cres)
         factor = min(cell_size[0:2]) if shape[2]==1 else min(cell_size)

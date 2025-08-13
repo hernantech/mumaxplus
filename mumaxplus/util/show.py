@@ -10,6 +10,7 @@ import pyvista as _pv
 from numbers import Integral
 from typing import Optional, Literal
 from matplotlib.axes import Axes
+from mpl_toolkits.axes_grid1 import make_axes_locatable as _make_axes_locatable
 
 import mumaxplus as _mxp
 
@@ -560,7 +561,11 @@ class _Plotter:
             label += f" ({prefix}{unit})"
             formatter = UnitScalarFormatter(prefix, unit)
 
-        return self.ax.figure.colorbar(cp, ax=self.ax, label=label, format=formatter)
+        # make cax so cbar scales with ax height
+        divider = _make_axes_locatable(self.ax)
+        cax = divider.append_axes(position="right", size="5%", pad="5%")
+
+        return self.ax.figure.colorbar(cp, cax=cax, label=label, format=formatter)
 
     def dress_axes(self, max_width_over_height_ratio=6., max_height_over_width_ratio=3.):
         # TODO: docstring

@@ -325,7 +325,7 @@ class _Plotter:
     user.
     """
     def __init__(self, field_quantity, out_of_plane_axis, layer, component, geometry,
-                 file_name, show, ax, figsize, title,
+                 file_name, show, ax, figsize, title, xlabel, ylabel,
                  imshow_cmap, imshow_symmetric_clim, enable_cbar,
                  quiver, arrow_size, quiver_cmap, quiver_symmetric_clim,
                  **quiver_kwargs):
@@ -408,6 +408,10 @@ class _Plotter:
 
         # title
         self.title = title
+
+        # labels
+        self.xlabel = xlabel
+        self.ylabel = ylabel
 
         # enable cbar
         self.enable_cbar = enable_cbar
@@ -569,21 +573,31 @@ class _Plotter:
         self.ax.set_xlim(left, right)
         self.ax.set_ylim(bottom, top)
 
-        # axis labels
-        if self.quantity:
-            x_maxabs = max(abs(left), abs(right))  # find largest number
-            y_maxabs = max(abs(bottom), abs(top))
-            _, x_prefix = appropriate_SIprefix(x_maxabs)
-            _, y_prefix = appropriate_SIprefix(y_maxabs)
-            self.ax.set_xlabel(f"${'xyz'[self.hor_axis_idx]}$ ({x_prefix}m)")
-            self.ax.set_ylabel(f"${'xyz'[self.vert_axis_idx]}$ ({y_prefix}m)")
+        # xlabel
+        if self.xlabel is None:
+            if self.quantity:
+                x_maxabs = max(abs(left), abs(right))  # find largest number
+                _, x_prefix = appropriate_SIprefix(x_maxabs)
+                self.ax.set_xlabel(f"${'xyz'[self.hor_axis_idx]}$ ({x_prefix}m)")
+                # axis label ticks with appropriate numbers according to prefix
+                self.ax.xaxis.set_major_formatter(UnitScalarFormatter(x_prefix, "m"))
+            else:
+                self.ax.set_xlabel(f"${'xyz'[self.hor_axis_idx]}$ (index)")
+        elif self.xlabel:
+            self.ax.set_xlabel(self.xlabel)
 
-            # axis label ticks with appropriate numbers according to prefix
-            self.ax.xaxis.set_major_formatter(UnitScalarFormatter(x_prefix, "m"))
-            self.ax.yaxis.set_major_formatter(UnitScalarFormatter(y_prefix, "m"))
-        else:
-            self.ax.set_xlabel(f"${'xyz'[self.hor_axis_idx]}$ (index)")
-            self.ax.set_ylabel(f"${'xyz'[self.vert_axis_idx]}$ (index)")
+        # ylabel
+        if self.ylabel is None:
+            if self.quantity:
+                y_maxabs = max(abs(bottom), abs(top))
+                _, y_prefix = appropriate_SIprefix(y_maxabs)
+                self.ax.set_ylabel(f"${'xyz'[self.vert_axis_idx]}$ ({y_prefix}m)")
+                # axis label ticks with appropriate numbers according to prefix
+                self.ax.yaxis.set_major_formatter(UnitScalarFormatter(y_prefix, "m"))
+            else:
+                self.ax.set_ylabel(f"${'xyz'[self.vert_axis_idx]}$ (index)")
+        elif self.xlabel:
+            self.ax.set_ylabel(self.ylabel)
 
         self.ax.set_facecolor("gray")
         
@@ -652,7 +666,7 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
                component: Optional[int] = None, geometry: Optional[_np.ndarray] = None,
                file_name: Optional[str] = None, show: Optional[bool] = None,
                ax: Optional[Axes] = None, figsize: Optional[tuple[float, float]] = None,
-               title: Optional[str] = None,
+               title: Optional[str] = None, xlabel: Optional[str] = None, ylabel: Optional[str] = None,
                imshow_cmap: str = None, imshow_symmetric_clim: bool = False,
                enable_cbar: bool = True, quiver: bool = None, arrow_size: float = 16.,
                quiver_cmap: Optional[str]= None, quiver_symmetric_clim: bool = True,
@@ -710,6 +724,14 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         The title of the Axes. `None` will generate a default title, while an
         empty string won't set any title.
 
+    xlabel : str, optional
+        The label of the x-axis. `None` will generate a default label, while an
+        empty string won't set any xlabel.
+
+    ylabel : str, optional
+        The label of the y-axis. `None` will generate a default label, while an
+        empty string won't set any ylabel.
+
     imshow_cmap : string, optional
         A colormap to use for the image if a scalar field is plotted.
 
@@ -755,7 +777,7 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         The resulting Axes on which is plotted.
     """
     plotter = _Plotter(field_quantity, out_of_plane_axis, layer, component, geometry,
-                       file_name, show, ax, figsize, title,
+                       file_name, show, ax, figsize, title, xlabel, ylabel,
                        imshow_cmap, imshow_symmetric_clim, enable_cbar,
                        quiver, arrow_size, quiver_cmap, quiver_symmetric_clim,
                        **quiver_kwargs)

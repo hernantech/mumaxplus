@@ -327,9 +327,8 @@ class _Plotter:
     """
     def __init__(self, field_quantity, out_of_plane_axis, layer, component, geometry,
                  file_name, show, ax, figsize, title, xlabel, ylabel,
-                 imshow_cmap, imshow_symmetric_clim, enable_cbar,
-                 quiver, arrow_size, quiver_cmap, quiver_symmetric_clim,
-                 **quiver_kwargs):
+                 imshow_cmap, imshow_symmetric_clim, enable_colorbar, colorbar_kwargs,
+                 quiver, arrow_size, quiver_cmap, quiver_symmetric_clim, quiver_kwargs):
         """see the docstring of :func:`plot_field`."""
 
         # check field_quantity input
@@ -414,8 +413,9 @@ class _Plotter:
         self.xlabel = xlabel
         self.ylabel = ylabel
 
-        # enable cbar
-        self.enable_cbar = enable_cbar
+        # colorbar
+        self.enable_colorbar = enable_colorbar
+        self.colorbar_kwargs = colorbar_kwargs.copy()
 
         # vector image or scalar image?
         self.vector_image_bool = self.ncomp == 3 and self.comp is None
@@ -533,7 +533,7 @@ class _Plotter:
 
     def add_cbar(self, cp, name: str = ""):
         """Adds a colorbar associated with the given plot next to `self.ax`, if
-        `self.enable_cbar` is True.
+        `self.enable_colorbar` is True.
         Also adds appropriate unit to the label if relevant.
 
         Parameters
@@ -550,22 +550,29 @@ class _Plotter:
             Returns the colorbar, if created.
         """
 
-        if not self.enable_cbar:
+        if not self.enable_colorbar:
             return
 
-        label = name
-        formatter = None
-        if self.quantity and (unit := self.quantity.unit):
-            vmin, vmax = cp.get_clim()
-            _, prefix = appropriate_SIprefix(max(abs(vmin), abs(vmax)))
-            label += f" ({prefix}{unit})"
-            formatter = UnitScalarFormatter(prefix, unit)
+        # get user kwargs, but leave alone for later use (e.g. multiple cbars)
+        cbar_kwargs = self.colorbar_kwargs.copy()
 
-        # make cax so cbar scales with ax height
-        divider = _make_axes_locatable(self.ax)
-        cax = divider.append_axes(position="right", size="5%", pad="5%")
+        # add label and formatter if neither is user-provided
+        if not any([k in cbar_kwargs.keys() for k in ["label", "format", "ticks"]]):
+            label = name
+            if self.quantity and (unit := self.quantity.unit):
+                vmin, vmax = cp.get_clim()
+                _, prefix = appropriate_SIprefix(max(abs(vmin), abs(vmax)))
+                label += f" ({prefix}{unit})"
+                cbar_kwargs["format"] = UnitScalarFormatter(prefix, unit)
+            cbar_kwargs["label"] = label
 
-        return self.ax.figure.colorbar(cp, cax=cax, label=label, format=formatter)
+        # make cax so cbar scales with ax height, if no sizes/positions are user-provided
+        if not any([k in cbar_kwargs.keys() for k in ["ax", "cax", "location",
+            "orientation", "fraction", "shrink", "aspect", "pad", "anchor", "panchor"]]):
+            divider = _make_axes_locatable(self.ax)
+            cbar_kwargs["cax"] = divider.append_axes(position="right", size="5%", pad="5%")
+
+        return self.ax.figure.colorbar(cp, **cbar_kwargs)
 
     def dress_axes(self, max_width_over_height_ratio=6., max_height_over_width_ratio=3.):
         # TODO: docstring
@@ -626,7 +633,7 @@ class _Plotter:
         if self.title is None:  # make default title
             # component if not in colorbar and non-trivial
             component = ""
-            if not self.vector_image_bool and not self.enable_cbar and self.ncomp > 1:
+            if not self.vector_image_bool and not self.enable_colorbar and self.ncomp > 1:
                 component = f"component {self.comp}"
 
             # name of quantity  # TODO: let user give name?
@@ -673,9 +680,10 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
                ax: Optional[Axes] = None, figsize: Optional[tuple[float, float]] = None,
                title: Optional[str] = None, xlabel: Optional[str] = None, ylabel: Optional[str] = None,
                imshow_cmap: str = None, imshow_symmetric_clim: bool = False,
-               enable_cbar: bool = True, quiver: bool = None, arrow_size: float = 16.,
+               enable_colorbar: bool = True, colorbar_kwargs: dict = {},
+               quiver: bool = None, arrow_size: float = 16.,
                quiver_cmap: Optional[str]= None, quiver_symmetric_clim: bool = True,
-               **quiver_kwargs) -> Axes:
+               quiver_kwargs : dict = {}) -> Axes:
     """Plot a :func:`mumaxplus.FieldQuantity` or `numpy.ndarray`
     with 1 component as a scalar field, with 3 components as a vector field or
     plot one selected component as a a scalar field.
@@ -745,8 +753,11 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         in the image.
         This is best used with diverging colormaps, like "bwr".
 
-    enable_cbar : bool, default=True
+    enable_colorbar : bool, default=True
         Whether to automatically add a colorbar to the figure of the Axes when relevant.
+    
+    colorbar_kwargs : dict, default={}
+        Keyword arguments to pass to `matplotlib.figure.Figure.colorbar`.
 
     quiver : bool, optional
         Whether to plot arrows on top of the colored image. If None (default),
@@ -772,7 +783,7 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         This is best used with diverging colormaps, like "bwr".
         This is only relevant for fieldquantities with 3 components.
 
-    **quiver_kwargs
+    quiver_kwargs : dict, default={}
         Keyword arguments to pass to `matplotlib.pyplot.quiver`.
         This is only relevant for fieldquantities with 3 components.
 
@@ -783,9 +794,9 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
     """
     plotter = _Plotter(field_quantity, out_of_plane_axis, layer, component, geometry,
                        file_name, show, ax, figsize, title, xlabel, ylabel,
-                       imshow_cmap, imshow_symmetric_clim, enable_cbar,
+                       imshow_cmap, imshow_symmetric_clim, enable_colorbar, colorbar_kwargs,
                        quiver, arrow_size, quiver_cmap, quiver_symmetric_clim,
-                       **quiver_kwargs)
+                       quiver_kwargs)
     return plotter.plot()
 
 

@@ -327,7 +327,8 @@ class _Plotter:
     """
     def __init__(self, field_quantity, out_of_plane_axis, layer, component, geometry,
                  file_name, show, ax, figsize, title, xlabel, ylabel,
-                 imshow_cmap, imshow_symmetric_clim, enable_colorbar, colorbar_kwargs,
+                 imshow_symmetric_clim, imshow_kwargs,
+                 enable_colorbar, colorbar_kwargs,
                  quiver, arrow_size, quiver_cmap, quiver_symmetric_clim, quiver_kwargs):
         """see the docstring of :func:`plot_field`."""
 
@@ -417,11 +418,22 @@ class _Plotter:
         self.enable_colorbar = enable_colorbar
         self.colorbar_kwargs = colorbar_kwargs.copy()
 
+        # imshow
+        self.imshow_kwargs = imshow_kwargs.copy()
+        im_extent = _quantity_2D_extent(self.quantity, self.hor_axis_idx, self.vert_axis_idx)
+        self.imshow_kwargs.setdefault("extent", im_extent)
+        self.imshow_kwargs.setdefault("origin", "lower")
         # vector image or scalar image?
         self.vector_image_bool = self.ncomp == 3 and self.comp is None
-        if not self.vector_image_bool:
+
+        # imshow symmetric clim
+        if not "vmin" in self.imshow_kwargs.keys() and \
+           not "vmax" in self.imshow_kwargs.keys():
             self.imshow_symmetric_clim = imshow_symmetric_clim
-            self.imshow_cmap = "bwr" if imshow_symmetric_clim and imshow_cmap is None else imshow_cmap
+        else:
+            self.imshow_symmetric_clim = False
+
+        if self.imshow_symmetric_clim: self.imshow_kwargs.setdefault("cmap", "bwr")
 
         # with or without quiver?
         if self.ncomp == 3:  # vector
@@ -437,10 +449,15 @@ class _Plotter:
             self.arrow_size = arrow_size
             self.arrow_size_fraction = 3/4  # make arrow smaller than max
             self.quiver_cmap = quiver_cmap
-            self.quiver_symmetric_clim = quiver_symmetric_clim
             self.quiver_kwargs = quiver_kwargs.copy()  # leave user input alone
             self.quiver_kwargs.setdefault("pivot", "middle")
 
+            # quiver symmetric clim
+            if not "vmin" in self.quiver_kwargs.keys() and \
+               not "vmax" in self.quiver_kwargs.keys():
+                self.quiver_symmetric_clim = quiver_symmetric_clim
+            else:
+                self.quiver_symmetric_clim = False
 
     def slice_field(self, field: _np.ndarray) -> _np.ndarray:
         """Return a right-handed two dimensional slice of the given field with
@@ -458,23 +475,24 @@ class _Plotter:
 
     def plot_image(self):
         # imshow
-        im_extent = _quantity_2D_extent(self.quantity, self.hor_axis_idx, self.vert_axis_idx)
         if self.vector_image_bool:  # vector field
             # TODO: update get_rgba
             im_rgba = get_rgba(self.field_2D)  # (vert_axis, hor_axis, rgba)
-            self.ax.imshow(im_rgba, origin="lower", extent=im_extent)
+            self.ax.imshow(im_rgba, **self.imshow_kwargs)
         else:  # show requested component
             scalar_field = self.field_2D[self.comp]
             if self.geom_2D is not None:  # mask False geometry
                 scalar_field = _np.ma.array(scalar_field, mask=_np.invert(self.geom_2D))
 
-            vmin, vmax = None, None
-            if self.imshow_symmetric_clim:
+            # make symmetric clim if not user provided
+            if not "vmin" in self.imshow_kwargs.keys() and \
+               not "vmax" in self.imshow_kwargs.keys() and \
+               self.imshow_symmetric_clim:
                 vmax = _np.max(_np.abs(scalar_field))
-                vmin = -vmax
+                self.imshow_kwargs["vmax"] = vmax
+                self.imshow_kwargs["vmin"] = -vmax
 
-            im = self.ax.imshow(scalar_field, origin="lower", extent=im_extent,
-                    cmap=self.imshow_cmap, vmin=vmin, vmax=vmax)
+            im = self.ax.imshow(scalar_field, **self.imshow_kwargs)
             
             # cbar
             # Name only the component if relevant. Let title display quantity name, unless empty
@@ -679,7 +697,7 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
                file_name: Optional[str] = None, show: Optional[bool] = None,
                ax: Optional[Axes] = None, figsize: Optional[tuple[float, float]] = None,
                title: Optional[str] = None, xlabel: Optional[str] = None, ylabel: Optional[str] = None,
-               imshow_cmap: str = None, imshow_symmetric_clim: bool = False,
+               imshow_symmetric_clim: bool = False, imshow_kwargs: dict = {},
                enable_colorbar: bool = True, colorbar_kwargs: dict = {},
                quiver: bool = None, arrow_size: float = 16.,
                quiver_cmap: Optional[str]= None, quiver_symmetric_clim: bool = True,
@@ -745,13 +763,14 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         The label of the y-axis. `None` will generate a default label, while an
         empty string won't set any ylabel.
 
-    imshow_cmap : string, optional
-        A colormap to use for the image if a scalar field is plotted.
-
     imshow_symmetric_clim : bool, default=False
         Whether to set zero as the central color if a scalar field is plotted
         in the image.
+        This is ignored if vmin or vmax is given in `imshow_kwargs`
         This is best used with diverging colormaps, like "bwr".
+
+    imshow_kwargs : dict, default={}
+        Keyword arguments to pass to `matplotlib.axes.Axes.imshow`.
 
     enable_colorbar : bool, default=True
         Whether to automatically add a colorbar to the figure of the Axes when relevant.
@@ -780,11 +799,13 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
     quiver_symmetric_clim : bool, default=True
         Whether to set zero as the central color if the arrows are colored
         according to the out-of-plane component of the vector field.
+        This is ignored if clim is given in `quiver_kwargs`.
         This is best used with diverging colormaps, like "bwr".
         This is only relevant for fieldquantities with 3 components.
 
     quiver_kwargs : dict, default={}
-        Keyword arguments to pass to `matplotlib.pyplot.quiver`.
+        Keyword arguments to pass to `matplotlib.axes.Axes.quiver`.
+        Use `quiver_cmap` instead of the keyword argument "cmap".
         This is only relevant for fieldquantities with 3 components.
 
     Returns
@@ -794,7 +815,8 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
     """
     plotter = _Plotter(field_quantity, out_of_plane_axis, layer, component, geometry,
                        file_name, show, ax, figsize, title, xlabel, ylabel,
-                       imshow_cmap, imshow_symmetric_clim, enable_colorbar, colorbar_kwargs,
+                       imshow_symmetric_clim, imshow_kwargs,
+                       enable_colorbar, colorbar_kwargs,
                        quiver, arrow_size, quiver_cmap, quiver_symmetric_clim,
                        quiver_kwargs)
     return plotter.plot()

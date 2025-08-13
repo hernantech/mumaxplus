@@ -622,7 +622,7 @@ class _Plotter:
             self.ax.set_aspect("auto")
 
         # title
-        # e.g.: component 2 of ferromagnet_1:magnetization in "z"-layer 16
+        # e.g.: component 2 of ferromagnet_1:magnetization in z-layer 16
         if self.title is None:  # make default title
             # component if not in colorbar and non-trivial
             component = ""
@@ -635,7 +635,7 @@ class _Plotter:
             # layer of OoP axis if non-trivial
             layer = ""
             if self.field.shape[3 - self.OoP_axis_idx] > 1:
-                layer = f"\"{self.out_of_plane_axis}\"-layer {self.layer}"
+                layer = f"${self.out_of_plane_axis}$-layer {self.layer}"
 
             # combine into title
             title = component + " of " + name if component and name else component + name

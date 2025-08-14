@@ -97,6 +97,36 @@ def _get_axis_components(out_of_plane_axis: Literal['x', 'y', 'z']) -> tuple[int
     
     raise ValueError(f"Unknown axis \'{out_of_plane_axis}\', use \'x\', \'y\' or \'z\' instead.")
 
+def slice_field_right_handed(field: _np.ndarray,
+                             OoP_axis_idx: Literal[0, 1, 2] = 2,
+                             layer: int = 0) -> _np.ndarray:
+    """Return a right-handed two dimensional slice of the given field with
+    shape (ncomp, n_vertical, n_horizontal) or (n_vertical, n_horizontal) by
+    taking the `layer` index of the out-of-plane axis given by `OoP_axis_idx`.
+
+    Parameters
+    ----------
+    field : numpy.ndarray with shape ([ncomp,] nz, ny, nx)
+        Field array to slice
+    OoP_axis_idx : int, default=2
+        Index of the out of plane axis. 0, 1 and 2 represent x, y and z respectively.
+    layer : int, default=0
+        Chosen index of the out-of-plane axis.
+
+    Returns
+    -------
+    field_2D : numpy.ndarray with shape ([ncomp,] n_vertical, n_horizontal)
+        Right-handed two dimensional slice of given field.
+    """
+    slice_ = [slice(None)] * field.ndim
+    slice_[-1 - OoP_axis_idx] = layer  # slice correct axis at chosen layer
+    field_2D = field[tuple(slice_)]
+
+    if OoP_axis_idx == 1:  # y
+        field_2D = _np.swapaxes(field_2D, -1, -2)  # ([ncomp,] nx, nz)  for right-hand axes
+
+    return field_2D
+
 def _quantity_2D_extent(field_quantity: _mxp.FieldQuantity|_np.ndarray,
                         hor_axis_idx: int = 0, vert_axis_idx: int = 1) \
                             -> Optional[tuple[int, int, int, int]]:
@@ -373,20 +403,21 @@ class _Plotter:
 
         # only need 2D slice of field
         # TODO: try to get rid of self.field
-        self.field_2D = self.slice_field(self.field)
+        self.field_2D = slice_field_right_handed(self.field, self.OoP_axis_idx, self.layer)
 
         # geometry
         self.geom_2D = None
         if geometry is not None:
             if geometry.shape == field_quantity.shape[1:]:
-                self.geom_2D = self.slice_field(geometry)
+                self.geom_2D = slice_field_right_handed(geometry, self.OoP_axis_idx, self.layer)
             else:
                 raise ValueError(
                     f"The shape of the given geometry {geometry.shape} does "
                     + "not match the spacial shape of the field quantity "
                     + f"{field_quantity.shape[1:]}")
         elif self.quantity is not None:
-            self.geom_2D = self.slice_field(self.quantity._impl.system.geometry)
+            self.geom_2D = slice_field_right_handed(self.quantity._impl.system.geometry,
+                                                    self.OoP_axis_idx, self.layer)
 
         # file name
         self.file_name = file_name
@@ -459,20 +490,6 @@ class _Plotter:
                 self.quiver_symmetric_clim = quiver_symmetric_clim
             else:
                 self.quiver_symmetric_clim = False
-
-    def slice_field(self, field: _np.ndarray) -> _np.ndarray:
-        """Return a right-handed two dimensional slice of the given field with
-        shape (ncomp, vert_axis, hor_axis) or (vert_axis, hor_axis) by taking
-        the `layer` index of the out-of-plane axis.
-        """
-        slice_ = [slice(None)] * field.ndim
-        slice_[-1 - self.OoP_axis_idx] = self.layer  # slice correct axis at chosen layer
-        field_2D = field[tuple(slice_)]
-
-        if self.out_of_plane_axis == 'y':
-            field_2D = _np.swapaxes(field_2D, -1, -2)  # ([ncomp,] nx, nz)  for right-hand axes
-
-        return field_2D
 
     def plot_image(self):
         # imshow
@@ -693,7 +710,7 @@ class _Plotter:
 
 
 def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
-               out_of_plane_axis: str = 'z', layer: int = 0,
+               out_of_plane_axis: Literal['x', 'y', 'z'] = 'z', layer: int = 0,
                component: Optional[int] = None, geometry: Optional[_np.ndarray] = None,
                file_name: Optional[str] = None, show: Optional[bool] = None,
                ax: Optional[Axes] = None, figsize: Optional[tuple[float, float]] = None,

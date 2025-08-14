@@ -49,37 +49,123 @@ def vector_to_rgb(x, y, z):
     return hsl_to_rgb(H, S, L)
 
 
-def get_rgba(field, quantity=None, layer=None):
-    """Get rgba values of given field.
-    There is also a CUDA version of this function which utilizes the GPU.
-    Use :func:`mumaxplus.FieldQuantity.get_rgb()`, but it has a different shape.
+def get_rgb(field_quantity: _mxp.FieldQuantity|_np.ndarray,
+            OoP_axis_idx: Optional[Literal[0, 1, 2]] = 2,
+            layer: Optional[int] = None,
+            geometry: Optional[_np.ndarray] = None) -> _np.ndarray:
+    """Get rgb values of given field along a given layer.
+
+    Note
+    ----
+    There is also a CUDA version of this function:
+    :func:`mumaxplus.FieldQuantity.get_rgb()`, but the RGB components are on the
+    first axis, like with FieldQuantity evaluations. Here, RGB values are on the
+    last axis to work nicely with plotting libraries, such as imshow in matplotlib.
 
     Parameters
     ----------
-    quantity : FieldQuantity (default None)
-        Used to set alpha value to 0 where geometry is False.
-    layer : int (default None)
-        z-layer of which to get rgba. Calculates rgba for all layers if None.
+    field_quantity : mumaxplus.FieldQuantity or numpy.ndarray
+        The vector field_quantity of which to get the rgb representation. It
+        needs to have the shape (3, nx, ny, nz) in order to slice along a given
+        layer.
+    OoP_axis_idx : int, optional, default=2
+        The index of the axis pointing out of plane: 0, 1 and 2 correspond to
+        x, y and z respectively. The other two are aranged according to a
+        right-handed coordinate system.
+        Calculates rgb for all layers if None.
+        This cannot be interpreted if field_quantity does not have 4 dimensions.
+    layer : int, optional
+        Layer index of the out-of-plane axis.
+        Calculates rgb for all layers if None (default).
+        This cannot be interpreted if field_quantity does not have 4 dimensions.
+    geometry : numpy.ndarray of booleans, optional
+        Cells where geometry is False are not used in normalization and are set to gray.
+        The shape of the geometry should correspond to the shape of the
+        field_quantity, except for the first component axis.
+        The given geometry is ignored if field_quantity is a FieldQuantity.
 
     Returns
     -------
-    rgba : ndarray
-        shape (ny, nx, 4) if layer is given, otherwise (nz, ny, nx, 4).
+    rgb : ndarray
+        It has shape (n_vertical, n_horizontal, 3) if OoP_axis_idx and layer are
+        given, otherwize (*field_quantity.shape[1:], 3).
     """
-    if layer is not None:
-        field = field[:, layer]  # select the layer
 
-    # rescale to make maximum norm 1
-    data = field / _np.max(_np.linalg.norm(field, axis=0)) if _np.any(field) else field
+    is_quantity = isinstance(field_quantity, _mxp.FieldQuantity)
+
+    # check input
+    if not is_quantity and not isinstance(field_quantity, _np.ndarray):
+        raise TypeError("The first argument should be a FieldQuantity or an ndarray.")
+
+    if (ncomp := field_quantity.shape[0]) != 3:
+        raise ValueError(f"field_quantity has {ncomp} components instead of 3")
+
+    if layer is not None and OoP_axis_idx is not None:
+        if (ndim := len(field_quantity.shape)) != 4:
+            raise IndexError(f"Can not take layer index {layer} of axis " +
+                             f"{OoP_axis_idx} of field_quantity with {ndim} " +
+                             "dimensions instead of 4.")
+        if (layer_max := field_quantity.shape[-1-OoP_axis_idx]) <= layer:
+            raise IndexError(f"layer {layer} is out of range of length {layer_max}")
+
+    if not OoP_axis_idx in [0, 1, 2, None]:
+        raise IndexError(f"OoP_axis_index should be 0, 1, 2 or None, not {OoP_axis_idx}.")
+
+
+    # FieldQuantity in 3D or with trivial slice: use CUDA
+    if (is_quantity and ((layer is None or OoP_axis_idx is None)  # 3D
+        or (field_quantity.shape[-1-OoP_axis_idx] == 1))):  # trivial
+
+        # use faster CUDA get_rgb for 3D rgb
+        rgb_front = field_quantity.get_rgb()
+
+        if field_quantity.shape[-1-OoP_axis_idx] == 1:  # take trivial slice
+            rgb_front = slice_field_right_handed(rgb_front, OoP_axis_idx, 0)
+
+        # put rgb at the end for plotting
+        return _np.moveaxis(rgb_front, 0, -1)
+
+    # evaluate field if given field_quantity
+    field = field_quantity.eval() if is_quantity else field_quantity.copy()
+
+    # set to 0 outisde geometry -> gray and 0 norm
+    if is_quantity: geometry = field_quantity._impl.system.geometry
+    if geometry is not None: field *= geometry[None]
+
+    # select the layer
+    if layer is not None and OoP_axis_idx is not None:
+        field = slice_field_right_handed(field, OoP_axis_idx, layer)
+
+    # rescale (after layer selection) to make maximum norm 1
+    field /= _np.max(_np.linalg.norm(field, axis=0)) if _np.any(field) else field
 
     # Create rgba image from the vector data
-    rgba = _np.ones((*(data.shape[1:]), 4))  # last index for R,G,B, and alpha channel
-    rgba[...,0], rgba[...,1], rgba[...,2] = vector_to_rgb(data[0], data[1], data[2])
+    rgb = _np.ones((*(field.shape[1:]), 3))  # last index for R, G and B channels
+    rgb[...,0], rgb[...,1], rgb[...,2] = vector_to_rgb(*field)
 
-    # Set alpha channel to one inside the geometry, and zero outside
-    if quantity is not None:
-        geom = quantity._impl.system.geometry
-        rgba[..., 3] = geom[layer] if layer is not None else geom
+    return rgb
+
+def get_rgba(field_quantity: _mxp.FieldQuantity|_np.ndarray,
+             OoP_axis_idx: Optional[Literal[0, 1, 2]] = 2,
+             layer: Optional[int] = 0,
+             geometry: Optional[_np.ndarray] = None) -> _np.ndarray:
+    """Get rgba values of given field_quantity.
+
+    See docstring of :func:`get_rgb` for an explanation of the parameters.
+    
+    Additionally, the geometry is used to set alpha value to 0 where geometry is False.
+    """
+    rgb = get_rgb(field_quantity, OoP_axis_idx, layer, geometry)
+
+    rgba = _np.ones((*rgb.shape[:-1], 4))
+    rgba[..., :3] = rgb
+
+    if isinstance(field_quantity, _mxp.FieldQuantity):
+        geometry = field_quantity._impl.system.geometry
+    if geometry is not None:
+        if layer is not None and OoP_axis_idx is not None:
+            geometry = slice_field_right_handed(geometry, OoP_axis_idx, layer)
+        rgba[...,3] = geometry
 
     return rgba
 
@@ -494,8 +580,8 @@ class _Plotter:
     def plot_image(self):
         # imshow
         if self.vector_image_bool:  # vector field
-            # TODO: update get_rgba
-            im_rgba = get_rgba(self.field_2D)  # (vert_axis, hor_axis, rgba)
+            im_rgba = get_rgba(self.field_2D, geometry=self.geom_2D,
+                            OoP_axis_idx=None, layer=None)
             self.ax.imshow(im_rgba, **self.imshow_kwargs)
         else:  # show requested component
             scalar_field = self.field_2D[self.comp]
@@ -551,8 +637,9 @@ class _Plotter:
 
         # plot requested quiver
         if self.quiver_cmap == "mumax3":  # HSL with rgb
-            q_rgba = _np.reshape(get_rgba(sampled_field), (nx_new*ny_new, 4))
-            self.ax.quiver(X, Y, U, V, color=q_rgba, **self.quiver_kwargs)
+            q_rgb = _np.reshape(get_rgb(sampled_field, OoP_axis_idx=None, layer=None),
+                                (nx_new*ny_new, 3))
+            self.ax.quiver(X, Y, U, V, color=q_rgb, **self.quiver_kwargs)
         elif self.quiver_cmap == None:  # uniform color
             self.quiver_kwargs.setdefault("alpha", 0.4)
             self.ax.quiver(X, Y, U, V, **self.quiver_kwargs)
@@ -934,21 +1021,21 @@ def show_field_3D(quantity, cmap="mumax3", enable_quiver=True):
 
         # color
         if "mumax" in cmap.lower():  # Use the mumax³ colorscheme
-            # don't need quantity to set opacity for geometry, threshold did this
-            rgba = get_rgba(threshed["field"].T, quantity=None, layer=None)
+            # don't need to set opacity for geometry, threshold did this
+            rgb = get_rgb(threshed["field"].T, OoP_axis_idx=None, layer=None, geometry=None)
             # we need to color every quiver vertex individually, each cone has cres+1
-            quiver.point_data["rgba"] = _np.repeat(rgba, cres+1, axis=0)
-            plotter.add_mesh(quiver, scalars="rgba", rgba=True, lighting=False)
+            quiver.point_data["rgb"] = _np.repeat(rgb, cres+1, axis=0)
+            plotter.add_mesh(quiver, scalars="rgb", rgb=True, lighting=False)
         else:  # matplotlib colormap
             quiver.point_data["z-component"] = _np.repeat(threshed["field"][:,2], cres+1, axis=0)
             plotter.add_mesh(quiver, scalars="z-component", cmap=cmap,
                              clim=(-1,1), lighting=False)
     else:  # use colored voxels
         if "mumax" in cmap.lower():  # Use the mumax³ colorscheme
-            # don't need quantity to set opacity for geometry, threshold did this
-            threshed.cell_data["rgba"] = get_rgba(threshed["field"].T,
-                                                  quantity=None, layer=None)
-            plotter.add_mesh(threshed, scalars="rgba", rgba=True, lighting=False)
+            # don't need to set opacity for geometry, threshold did this
+            threshed.cell_data["rgb"] = get_rgb(threshed["field"].T,
+                                   OoP_axis_idx=None, layer=None, geometry=None)
+            plotter.add_mesh(threshed, scalars="rgb", rgb=True, lighting=False)
         else:  # matplotlib colormap
             threshed.cell_data["z-component"] = threshed["field"][:,2]
             plotter.add_mesh(threshed, scalars="z-component", cmap=cmap,

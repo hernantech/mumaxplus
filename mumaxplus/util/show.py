@@ -7,7 +7,7 @@ import math as _math
 from itertools import product as _product
 import pyvista as _pv
 
-from numbers import Integral
+from numbers import Integral, Number
 from typing import Optional, Literal
 from types import MethodType
 from matplotlib.axes import Axes
@@ -349,8 +349,8 @@ def appropriate_SIprefix(n: float|_np.ndarray,
         True (default), then centi, deci, deca and hecto are not used.
         Example: converting 0.0000238 ms would be `appropriate_SIprefix(0.0000238, 'm')` -> `(23.8, 'n')`
     """
-    # If `n` is an array, the median is usually representative of the scale
-    value = _np.median(n) if isinstance(n, _np.ndarray) else n
+    # If `n` is an array, use the average of absolute values as representative of the scale
+    value = _np.average(_np.abs(n)) if isinstance(n, _np.ndarray) else n
 
     if unit_prefix not in SIprefix_to_magnitude.keys():
         raise ValueError(f"'{unit_prefix}' is not a supported SI prefix.")
@@ -739,6 +739,37 @@ class _Plotter:
 
         self.im.get_cursor_data = MethodType(new_get_cursor_data, self.im)
 
+    def replace_format_cursor_data(self):
+        """Replaces the `format_cursor_data` method of the AxesImage artist
+        `self.im` to include an appropriate SI unit.
+
+        This is based on the original `matplotlib.axes.Axes.get_cursor_data`.
+        https://github.com/matplotlib/matplotlib/blob/v3.10.5/lib/matplotlib/artist.py#L1330-L1360
+        """
+        def new_format_cursor_data(data):
+            try:
+                data[0]
+            except (TypeError, IndexError):
+                data = [data]
+
+            data = _np.array([item for item in data if isinstance(item, Number)])
+            if len(data) == 0:
+                return ""
+
+            if append_unit:= (self.quantity and self.quantity.unit):
+                data, prefix = appropriate_SIprefix(data)
+
+            data_str = ', '.join(f'{item:0.3g}' for item in data)
+            if len(data) > 1:
+                data_str = "(" + data_str + ")"
+            
+            if append_unit:
+                data_str += " " + prefix + self.quantity.unit
+
+            return data_str
+
+        self.im.format_cursor_data = new_format_cursor_data
+
     def dress_axes(self, max_width_over_height_ratio=6., max_height_over_width_ratio=3.):
         # TODO: docstring
         
@@ -822,6 +853,9 @@ class _Plotter:
         # replace get_cursor_data of image when plotting vector rgb
         if self.vector_image_bool:
             self.replace_get_cursor_data()
+
+        # replace format_cursor_data of image to add appropriate SI unit
+        self.replace_format_cursor_data()
 
     def plot(self) -> Axes:
         # TODO: docstring

@@ -9,8 +9,10 @@ import pyvista as _pv
 
 from numbers import Integral
 from typing import Optional, Literal
+from types import MethodType
 from matplotlib.axes import Axes
 from mpl_toolkits.axes_grid1 import make_axes_locatable as _make_axes_locatable
+from matplotlib.transforms import Bbox, BboxTransform
 
 import mumaxplus as _mxp
 
@@ -582,7 +584,7 @@ class _Plotter:
         if self.vector_image_bool:  # vector field
             im_rgba = get_rgba(self.field_2D, geometry=self.geom_2D,
                             OoP_axis_idx=None, layer=None)
-            self.ax.imshow(im_rgba, **self.imshow_kwargs)
+            self.im = self.ax.imshow(im_rgba, **self.imshow_kwargs)
         else:  # show requested component
             scalar_field = self.field_2D[self.comp]
             if self.geom_2D is not None:  # mask False geometry
@@ -596,7 +598,7 @@ class _Plotter:
                 self.imshow_kwargs["vmax"] = vmax
                 self.imshow_kwargs["vmin"] = -vmax
 
-            im = self.ax.imshow(scalar_field, **self.imshow_kwargs)
+            self.im = self.ax.imshow(scalar_field, **self.imshow_kwargs)
             
             # cbar
             # Name only the component if relevant. Let title display quantity name, unless empty
@@ -606,7 +608,7 @@ class _Plotter:
                 cname = qname
             else:
                 cname = ""
-            self.add_cbar(im, name=cname)
+            self.add_cbar(self.im, name=cname)
     
     def plot_quiver(self):
         if not self.enable_quiver:
@@ -639,10 +641,10 @@ class _Plotter:
         if self.quiver_cmap == "mumax3":  # HSL with rgb
             q_rgb = _np.reshape(get_rgb(sampled_field, OoP_axis_idx=None, layer=None),
                                 (nx_new*ny_new, 3))
-            self.ax.quiver(X, Y, U, V, color=q_rgb, **self.quiver_kwargs)
+            self.quiver = self.ax.quiver(X, Y, U, V, color=q_rgb, **self.quiver_kwargs)
         elif self.quiver_cmap == None:  # uniform color
             self.quiver_kwargs.setdefault("alpha", 0.4)
-            self.ax.quiver(X, Y, U, V, **self.quiver_kwargs)
+            self.quiver = self.ax.quiver(X, Y, U, V, **self.quiver_kwargs)
         else:  # OoP component colored
             sampled_field_OoP = sampled_field[self.OoP_axis_idx]
             vmin, vmax = None, None
@@ -650,9 +652,9 @@ class _Plotter:
                 vmax = _np.max(_np.abs(sampled_field_OoP))
                 vmin = -vmax
             self.quiver_kwargs.setdefault("clim", (vmin, vmax))
-            q = self.ax.quiver(X, Y, U, V, sampled_field_OoP,
+            self.quiver = self.ax.quiver(X, Y, U, V, sampled_field_OoP,
                                cmap=self.quiver_cmap, **self.quiver_kwargs)
-            self.add_cbar(q, name=f"Out-of-plane {self.out_of_plane_axis}-component")
+            self.add_cbar(self.quiver, name=f"Out-of-plane {self.out_of_plane_axis}-component")
 
     def add_cbar(self, cp, name: str = ""):
         """Adds a colorbar associated with the given plot next to `self.ax`, if
@@ -696,6 +698,46 @@ class _Plotter:
             cbar_kwargs["cax"] = divider.append_axes(position="right", size="5%", pad="5%")
 
         return self.ax.figure.colorbar(cp, **cbar_kwargs)
+
+    def replace_get_cursor_data(self):
+        """Replaces the `get_cursor_data` method of the AxesImage artist `self.im`
+        in order to interactively show the raw data values instead of the image
+        array entries. This is useful for when the data is manually converted to
+        rgb(a) values.
+
+        This is a modified version of the original
+        `matplotlib,image.AxesImage.get_cursor_data`.
+        https://github.com/matplotlib/matplotlib/blob/v3.10.5/lib/matplotlib/image.py#L979-L1004
+        """
+
+        xmin, xmax, ymin, ymax = self.im.get_extent()
+        if self.im.origin == 'upper':
+            ymin, ymax = ymax, ymin
+        imin, imax, jmin, jmax = 0, self.field_2D.shape[1], 0, self.field_2D.shape[2]
+
+        data_extent = Bbox([[xmin, ymin], [xmax, ymax]])
+        array_extent = Bbox([[jmin, imin], [jmax, imax]])
+        data_to_array_transform = BboxTransform(boxin=data_extent, boxout=array_extent)
+
+        def new_get_cursor_data(im_self, event):
+            # first argument is `self` when a method of AxesImage.
+
+            trans = im_self.get_transform().inverted()  # changes with viewing window
+            trans += data_to_array_transform
+            point = trans.transform([event.x, event.y])  # mouse coordinates
+
+            if any(_np.isnan(point)):
+                return None
+            j, i = point.astype(int)
+            # Clip the coordinates at array bounds
+            if ((not (0 <= i < imax) or not (0 <= j < jmax)) or
+                (self.geom_2D is not None and not self.geom_2D[i, j])):
+                # outside
+                return None
+            else:
+                return self.field_2D[:, i, j]
+
+        self.im.get_cursor_data = MethodType(new_get_cursor_data, self.im)
 
     def dress_axes(self, max_width_over_height_ratio=6., max_height_over_width_ratio=3.):
         # TODO: docstring
@@ -777,6 +819,9 @@ class _Plotter:
         elif self.title:  # user set title
             self.ax.set_title(self.title)
 
+        # replace get_cursor_data of image when plotting vector rgb
+        if self.vector_image_bool:
+            self.replace_get_cursor_data()
 
     def plot(self) -> Axes:
         # TODO: docstring

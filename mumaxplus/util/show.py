@@ -4,18 +4,19 @@ import matplotlib.pyplot as _plt
 import matplotlib as _matplotlib
 import numpy as _np
 import math as _math
-from itertools import product as _product
 import pyvista as _pv
 
 from numbers import Integral, Number
 from typing import Optional, Literal
 from types import MethodType
+from itertools import product
 from matplotlib.axes import Axes
 from mpl_toolkits.axes_grid1 import make_axes_locatable as _make_axes_locatable
 from matplotlib.transforms import Bbox, BboxTransform
 
 import mumaxplus as _mxp
 
+# ----- rgb -----
 
 def hsl_to_rgb(H, S, L):
     """Convert color from HSL to RGB."""
@@ -171,6 +172,7 @@ def get_rgba(field_quantity: _mxp.FieldQuantity|_np.ndarray,
 
     return rgba
 
+# ----- end of rgb -----
 
 def _get_axis_components(out_of_plane_axis: Literal['x', 'y', 'z']) -> tuple[int, int, int]:
     """Translates out of plane axis string to a right handed coordinate system
@@ -184,6 +186,7 @@ def _get_axis_components(out_of_plane_axis: Literal['x', 'y', 'z']) -> tuple[int
         return 0, 1, 2
     
     raise ValueError(f"Unknown axis \'{out_of_plane_axis}\', use \'x\', \'y\' or \'z\' instead.")
+
 
 def slice_field_right_handed(field: _np.ndarray,
                              OoP_axis_idx: Literal[0, 1, 2] = 2,
@@ -215,8 +218,10 @@ def slice_field_right_handed(field: _np.ndarray,
 
     return field_2D
 
+
 def _quantity_2D_extent(field_quantity: _mxp.FieldQuantity|_np.ndarray,
-                        hor_axis_idx: int = 0, vert_axis_idx: int = 1) \
+                        hor_axis_idx: Literal[0, 1, 2] = 0,
+                        vert_axis_idx: Literal[0, 1, 2] = 1) \
                             -> Optional[tuple[int, int, int, int]]:
     """If the given field_quantity has an extent, the two dimensional extent is
     given as (left, right, bottom, top), with chosen indices for the horizontal
@@ -233,27 +238,44 @@ def _quantity_2D_extent(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         return (left, right, bottom, top)
     return None
 
-# TODO: better name
-# TODO: docstring
-# TODO: vectorize?
-def _get_fraction(o_i: int, n_i: int, r: float) -> float:
-    # old index, new index, old-new shape ratio
-    n_l, n_r = n_i * r, (n_i + 1) * r  # left and right boundaries of new cell
-
-    if n_l <= o_i and o_i + 1 <= n_r:  # fully inside new cell
-        return 1.
-    if n_l <= o_i < n_r:  # only left side inside new cell
-        return n_r - o_i
-    if n_l < o_i + 1 <= n_r:  # only right side inside new cell
-        return o_i + 1 - n_l
-    return 0.  # not inside
-
+# ----- downsample -----
 
 def _get_downsampled_meshgrid(old_size: tuple[int, int], new_size: tuple[int, int],
                               quantity: Optional[_mxp.FieldQuantity] = None,
-                              hor_axis_idx: int = 0, vert_axis_idx: int = 1) \
+                              hor_axis_idx: Literal[0, 1, 2] = 0,
+                              vert_axis_idx: Literal[0, 1, 2] = 1) \
                                 -> tuple[_np.ndarray, _np.ndarray]:
-    # TODO: docstring
+    """Get a 2D meshrgid of downsampled coordinates, which indicate cell centers
+    of a new smaller grid overlayed on top of an old larger grid, with all edges
+    aligned.
+
+    If the `quantity` is not given, the center of the bottom left cell with
+    index [0, 0] is assumed to live at coordinate (0, 0), with cell sizes of 1.
+    If it is given, [0, 0] lives at the system's origin, with cell sizes
+    corresponding to the system's cell sizes.
+
+    Parameters
+    ----------
+    old_size : tuple of 2 integers
+        The old 2D shape (n_horizontal, n_vertical) of an assumed large array.
+    new_size : tuple of 2 integers
+        The new 2D shape (n_horizontal, n_vertical) of an assumed smaller array.
+        Both entries need to be smaller or equal to the entries of `old_size`.
+    quantity : mumaxplus.FieldQuantity, optional
+        If given, the coordinates are translated to align with the system's
+        origin and are scaled with the system's cellsizes.
+    hor_axis_idx : int, default=0
+        The index of the horizontal axis (0:x, 1:y, 2:z). This is only used for
+        the origin and cell size if `quantity` is given.
+    vert_axis_idx : int, default=1
+        The index of the horizontal axis (0:x, 1:y, 2:z). This is only used for
+        the origin and cell size if `quantity` is given.
+    
+    Returns
+    -------
+    meshgrid : tuple of 2 numpy.ndarray
+        The meshgrid of new coordinates.
+    """
     nx_old, ny_old = old_size
     nx_new, ny_new = new_size
 
@@ -278,55 +300,95 @@ def _get_downsampled_meshgrid(old_size: tuple[int, int], new_size: tuple[int, in
 
     return _np.meshgrid(x, y, indexing='xy')  # [y, x] indexing like mumax fields
 
-def downsample(field: _np.ndarray, new_size: tuple, intrinsic: bool = True) -> _np.ndarray:
-    """Placeholder docstring so I don't forget
-    field is an array with shape (ncomp, nz, ny, nx)
-    new_size is the grid size that should be used for the result as (nx, ny, nz) (other way!)
-    The edges are lined-up, old small cells are divided between the new large
-    cells according to the fraction of the area/volume inside each of the
-    covering large cells.
-    Intrinsic means we take the average. If False, extrinsic, so everything is summed up but not divided.
+
+def _get_length_fraction_inside(o_i: int, n_i: int, r: float) -> float:
+    """Returns the fraction of the side length of the old small cell that is
+    inside the new cell, depending on the ratio of the total number of cells.
+
+    Parameters
+    ----------
+    old_idx : int or numpy.ndarray of integers
+        Index of a smaller cell in a larger array.
+    new_idx : int or numpy.ndarray of integers
+        Index of a larger cell in a smaller array.
+    ratio : float or numpy.ndarray of floats
+        Ratio of the old number of cells over new number of cells. Assumed to be
+        larger than or equal to 1.
+
+    Returns
+    -------
+    float or numpy.ndarray of floats
+        Fraction of the smaller cell with the old index inside the larger cell
+        with the new index.
     """
-    # TODO: better docstring
-    # TODO: explain "downsampling"
-    # TODO: field is assumed ndarray. Should it also accept FieldQuantities?
-    # TODO: explain the difference between intrinsic and extrinsic quantities...
-    # The use will almost always be for intrinsic quantities, which need to be divided in the end (averaging)
-    # TODO: can (and should) this be CUDA-fied?
+    # old index, new index, old-new shape ratio
+    n_l, n_r = n_i * r, (n_i + 1) * r  # left and right boundaries of new cell
 
-    ncomp = field.shape[0]
-    old_shape = field.shape[1:]
-    dim = len(old_shape)
-    new_shape = new_size[::-1]  # TODO: new shape should be (nx, ny, nz)? grid size or field shape?
-    # TODO: check length of new_shape, check positive, check <= old, check integers
-    new_field = _np.zeros((ncomp, *new_shape))
+    if n_l <= o_i and o_i + 1 <= n_r:  # fully inside new cell
+        return 1.
+    if n_l <= o_i < n_r:  # only left side inside new cell
+        return n_r - o_i
+    if n_l < o_i + 1 <= n_r:  # only right side inside new cell
+        return o_i + 1 - n_l
+    return 0.  # not inside
 
-    on_shape_ratio = [old_shape[i] / new_shape[i] for i in range(dim)]
+def downsample(field: _np.ndarray, new_shape: tuple, intrinsic: bool = True) -> _np.ndarray:
+    """Downsample the field to a new shape. If the given and returned fields are
+    imagined to be overlayed on top of one another with their edges aligned,
+    then the cells of the returned array contain the average (or sum, if not
+    intrinsic) of all cells they (partially) cover, weighted by the fraction of
+    the covered area/volume.
 
-    # TODO: vectorize?
+    Parameters
+    ----------
+    field : numpy.ndarray
+        The field to downsample.
+    new_shape : tuple of integers
+        The new shape, which must have the same number of dimensions as the
+        given `field`, with smaller or equal length per dimension.
+    intrinsic : bool, True
+        Whether to take the average or the total sum, so whether to divide the
+        resulting sum by the number of old cells contained within the new cells
+        or not.
+    
+    Returns
+    -------
+    new_field : numpy.ndarray
+        The downsampled field with a smaller size.
+    """
+    old_shape = field.shape
+    ndim = field.ndim
+
+    if ndim != len(new_shape):
+        raise ValueError("new shape does not have same number of dimensions as old shape")
+    for n_old, n_new in zip(old_shape, new_shape):
+        if n_new > n_old:
+            raise ValueError("Can't resample to larger arrays, can only downsample")
+
+    new_field = _np.zeros(new_shape)
+    on_shape_ratio = _np.array([old_shape[i] / new_shape[i] for i in range(ndim)])
+
     for idx_new in _np.ndindex(new_shape):  # loop over all new cells
-        sum = _np.zeros((ncomp))
-        if intrinsic: denom = _np.zeros((ncomp))
-
+        sum = 0.
         # loop over all old cells that are at least partly inside the new cell 
         old_ranges = [range(int(i_new * ratio), _math.ceil((i_new + 1) * ratio))
                       for (i_new, ratio) in zip(idx_new, on_shape_ratio)]
-        for idx_old in _product(*old_ranges):
-
+        for idx_old in product(*old_ranges):
             # find fraction of the length/area/volume inside
             frac = 1.0
-            for i in range(dim):
-                frac *= _get_fraction(idx_old[i], idx_new[i], on_shape_ratio[i])
+            for i in range(ndim):
+                frac *= _get_length_fraction_inside(idx_old[i], idx_new[i], on_shape_ratio[i])
 
-            f = field[:, *idx_old]
-            sum += frac * f
-            if intrinsic: denom += frac
+            sum += frac * field[*idx_old]
         
-        new_field[:, *idx_new] = sum / denom if intrinsic else sum
+        new_field[*idx_new] = sum
+
+    if intrinsic: new_field /= _np.prod(on_shape_ratio)
 
     return new_field
 
-# --------------------------------------------------
+# ----- end of downsample -----
+# ----- SI units -----
 # This code is copied from the Hotspice code written by Jonathan Maes and slightly tweaked.
 # https://github.com/bvwaeyen/Hotspice/blob/main/hotspice/utils.py#L129
 
@@ -356,7 +418,7 @@ def appropriate_SIprefix(n: float|_np.ndarray,
         raise ValueError(f"'{unit_prefix}' is not a supported SI prefix.")
     
     offset_magnitude = SIprefix_to_magnitude[unit_prefix]
-    # TODO: I personally think 'floor' looks nicer than 'round'; less decimal numbers
+    # TODO: maybe 'floor' looks nicer than 'round'; less decimal numbers
     nearest_magnitude = (round(_np.log10(abs(value))) if value != 0 else -_np.inf) + offset_magnitude
     # Make sure it is in the known range
     nearest_magnitude = _np.clip(nearest_magnitude,
@@ -371,7 +433,8 @@ def appropriate_SIprefix(n: float|_np.ndarray,
     
     return (n/10**(used_magnitude - offset_magnitude), magnitude_to_SIprefix[used_magnitude])
 
-# --------------------------------------------------
+# ----- end of SI units -----
+# ----- plot_field -----
 
 class UnitScalarFormatter(_matplotlib.ticker.ScalarFormatter):
     """An extension of the ScalarFormatter to take units into account.
@@ -483,15 +546,15 @@ class _Plotter:
 
         # split types to know what we're working with
         if isinstance(field_quantity, _mxp.FieldQuantity):
-            self.field = field_quantity.eval()
+            field = field_quantity.eval()
             self.quantity = field_quantity
         else:
-            self.field = _np.copy(field_quantity)
+            field = _np.copy(field_quantity)
             self.quantity = None
 
         # only need 2D slice of field
-        # TODO: try to get rid of self.field
-        self.field_2D = slice_field_right_handed(self.field, self.OoP_axis_idx, self.layer)
+        self.field_2D = slice_field_right_handed(field, self.OoP_axis_idx, self.layer)
+        self.field_shape = field_quantity.shape
 
         # geometry
         self.geom_2D = None
@@ -540,7 +603,7 @@ class _Plotter:
 
         # imshow
         self.imshow_kwargs = imshow_kwargs.copy()
-        im_extent = _quantity_2D_extent(self.quantity, self.hor_axis_idx, self.vert_axis_idx)
+        im_extent = _quantity_2D_extent(field_quantity, self.hor_axis_idx, self.vert_axis_idx)
         self.imshow_kwargs.setdefault("extent", im_extent)
         self.imshow_kwargs.setdefault("origin", "lower")
         # vector image or scalar image?
@@ -583,7 +646,7 @@ class _Plotter:
         # imshow
         if self.vector_image_bool:  # vector field
             im_rgba = get_rgba(self.field_2D, geometry=self.geom_2D,
-                            OoP_axis_idx=None, layer=None)
+                               OoP_axis_idx=None, layer=None)
             self.im = self.ax.imshow(im_rgba, **self.imshow_kwargs)
         else:  # show requested component
             scalar_field = self.field_2D[self.comp]
@@ -615,14 +678,14 @@ class _Plotter:
             return
 
         # downsample 2D field
-        _, ny_old, nx_old = self.field_2D.shape
+        ncomp, ny_old, nx_old = self.field_2D.shape
         nx_new = max(int(nx_old / self.arrow_size), 1)
         ny_new = max(int(ny_old / self.arrow_size), 1)
 
         X, Y = _get_downsampled_meshgrid((nx_old, ny_old), (nx_new, ny_new), self.quantity,
                                         self.hor_axis_idx, self.vert_axis_idx)
 
-        sampled_field = downsample(self.field_2D, new_size=(nx_new, ny_new))
+        sampled_field = downsample(self.field_2D, (ncomp, ny_new, nx_new))
         U, V = sampled_field[self.hor_axis_idx], sampled_field[self.vert_axis_idx]
 
         # scale arrows correctly, but set kwargs together
@@ -771,11 +834,17 @@ class _Plotter:
         self.im.format_cursor_data = new_format_cursor_data
 
     def dress_axes(self, max_width_over_height_ratio=6., max_height_over_width_ratio=3.):
-        # TODO: docstring
+        """Dress `self.ax` to make it prettier using all known information.
+
+        Sets:
+        - xlilm and ylim
+        - xlabel and ylabel, including units
+        - aspect ratio
+        - get_cursor_data in order to inspect raw vector data
+        - format_cursor_data for more human readable data.
+        """
         
-        left, right, bottom, top = _quantity_2D_extent(
-            self.quantity if self.quantity else self.field,
-            self.hor_axis_idx, self.vert_axis_idx)
+        left, right, bottom, top = self.imshow_kwargs["extent"]
 
         # axis limits
         self.ax.set_xlim(left, right)
@@ -837,7 +906,7 @@ class _Plotter:
 
             # layer of OoP axis if non-trivial
             layer = ""
-            if self.field.shape[3 - self.OoP_axis_idx] > 1:
+            if self.field_shape[3 - self.OoP_axis_idx] > 1:
                 layer = f"${self.out_of_plane_axis}$-layer {self.layer}"
 
             # combine into title
@@ -858,7 +927,7 @@ class _Plotter:
         self.replace_format_cursor_data()
 
     def plot(self) -> Axes:
-        # TODO: docstring
+        """The one function to plot everything."""
 
         self.plot_image()
 
@@ -1005,6 +1074,7 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
                        quiver_kwargs)
     return plotter.plot()
 
+# ----- end of plot_field -----
 
 def show_regions(magnet, layer=0):
     """Plot the boundaries between regions of the given magnet."""

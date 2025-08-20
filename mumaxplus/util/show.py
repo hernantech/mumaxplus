@@ -149,7 +149,7 @@ def get_rgb(field_quantity: _mxp.FieldQuantity|_np.ndarray,
 
 def get_rgba(field_quantity: _mxp.FieldQuantity|_np.ndarray,
              OoP_axis_idx: Optional[Literal[0, 1, 2]] = 2,
-             layer: Optional[int] = 0,
+             layer: Optional[int] = None,
              geometry: Optional[_np.ndarray] = None) -> _np.ndarray:
     """Get rgba values of given field_quantity.
 

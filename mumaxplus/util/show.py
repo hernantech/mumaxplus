@@ -419,7 +419,8 @@ def appropriate_SIprefix(n: float|_np.ndarray,
     
     offset_magnitude = SIprefix_to_magnitude[unit_prefix]
     # TODO: maybe 'floor' looks nicer than 'round'; less decimal numbers
-    nearest_magnitude = (round(_np.log10(abs(value))) if value != 0 else -_np.inf) + offset_magnitude
+    # Don't use any prefix if exactly 0
+    nearest_magnitude = (round(_np.log10(abs(value))) if value != 0 else 0) + offset_magnitude
     # Make sure it is in the known range
     nearest_magnitude = _np.clip(nearest_magnitude,
                                 min(SIprefix_to_magnitude.values()),

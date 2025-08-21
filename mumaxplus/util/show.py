@@ -45,9 +45,15 @@ def hsl_to_rgb(H, S, L):
 
 
 def vector_to_rgb(x, y, z):
-    """Map vector (with norm ≤ 1) to RGB."""
+    """Map vector (with norm ≤ 1) to RGB.
+    
+    Note
+    ----
+    The saturation does not depend on the z-component, so the color sphere is
+    continuous.
+    """
     H = _np.arctan2(y, x)
-    S = _np.sqrt(x ** 2 + y ** 2 + z ** 2)
+    S = _np.sqrt(x ** 2 + y ** 2)  # + z ** 2)  # no z so color sphere is continuous!
     L = 0.5 + 0.5 * z
     return hsl_to_rgb(H, S, L)
 
@@ -56,14 +62,21 @@ def get_rgb(field_quantity: _mxp.FieldQuantity|_np.ndarray,
             OoP_axis_idx: Optional[Literal[0, 1, 2]] = 2,
             layer: Optional[int] = None,
             geometry: Optional[_np.ndarray] = None) -> _np.ndarray:
-    """Get rgb values of given field along a given layer.
+    """Get rgb values of given field quantity along a given layer.
 
-    Note
-    ----
+    Notes
+    -----
     There is also a CUDA version of this function:
     :func:`mumaxplus.FieldQuantity.get_rgb()`, but the RGB components are on the
     first axis, like with FieldQuantity evaluations. Here, RGB values are on the
     last axis to work nicely with plotting libraries, such as imshow in matplotlib.
+
+    The final color scheme is different from mumax³. In this case, the
+    saturation does not depend on the z-component anymore, meaning the z=0 plane
+    remains unchanged, but other colors will appear slightly less saturated.
+    This ensures that the color sphere is continuous everywhere, particularly
+    when crossing the xz- or yz-plane with a normalized length less than 1,
+    where the colors will fade through gray.
 
     Parameters
     ----------
@@ -702,7 +715,7 @@ class _Plotter:
             self.quiver_kwargs["scale_units"] = "xy"
 
         # plot requested quiver
-        if self.quiver_cmap == "mumax3":  # HSL with rgb
+        if isinstance(self.quiver_cmap, str) and "hsl" in self.quiver_cmap.lower():  # HSL with rgb
             q_rgb = _np.reshape(get_rgb(sampled_field, OoP_axis_idx=None, layer=None),
                                 (nx_new*ny_new, 3))
             self.quiver = self.ax.quiver(X, Y, U, V, color=q_rgb, **self.quiver_kwargs)
@@ -959,7 +972,7 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
     """Plot a :func:`mumaxplus.FieldQuantity` or `numpy.ndarray`
     with 1 component as a scalar field, with 3 components as a vector field or
     plot one selected component as a a scalar field.
-    Vector fields are plotted using the mumax³ (HSL) colorscheme, with
+    Vector fields are plotted using an HSL colorscheme, with
     optionally added arrows.
     
     Parameters
@@ -983,7 +996,7 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         If set to an integer, that component is plotted as a scalar field.
         If None (default), a field_quantity with
             - 1 component is plotted as a scalar field
-            - 3 components is plotted as a vector field with the mumax3 (HSL) colorscheme.
+            - 3 components is plotted as a vector field with an HSL colorscheme.
             - a different number of components can't be plotted.
 
     geometry : numpy.ndarray, optional
@@ -1045,9 +1058,9 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
 
     quiver_cmap : string, optional
         A colormap to use for the quiver. By default, no colormap is used, so
-        the arrows are a solid color. If set to "mumax3", the 3D vector data is
-        used for the mumax³ (HSL) colorscheme. Any matplotlib colormap can also
-        be given to color the arrows according to the out-of-plane component.
+        the arrows are a solid color. If set to "HSL", the 3D vector data is
+        used for an HSL colorscheme. Any matplotlib colormap can also be given
+        to color the arrows according to the out-of-plane component.
         This is only relevant for fieldquantities with 3 components.
 
     quiver_symmetric_clim : bool, default=True
@@ -1119,15 +1132,15 @@ def show_magnet_geometry(magnet):
     plotter.show()
 
 
-def show_field_3D(quantity, cmap="mumax3", enable_quiver=True):
+def show_field_3D(quantity, cmap="HSL", enable_quiver=True):
     """Plot a :func:`mumaxplus.FieldQuantity` with 3 components as a vectorfield.
 
     Parameters
     ----------
     quantity : mumaxplus.FieldQuantity (3 components)
         The `FieldQuantity` to plot as a vectorfield.
-    cmap : string, optional, default: "mumax3"
-        A colormap to use. By default the mumax³ colormap is used.
+    cmap : string, optional, default: "HSL"
+        A colormap to use. By default an HSL colormap is used.
         Any matplotlib colormap can also be given to color the vectors according
         to their z-component. It's best to use diverging colormaps, like "bwr".
     enable_quiver : boolean, optional, default: True
@@ -1170,7 +1183,7 @@ def show_field_3D(quantity, cmap="mumax3", enable_quiver=True):
         quiver = threshed.glyph(orient="field", scale=False, factor=factor, geom=cone)
 
         # color
-        if "mumax" in cmap.lower():  # Use the mumax³ colorscheme
+        if "hsl" in cmap.lower():  # Use the HSL colorscheme
             # don't need to set opacity for geometry, threshold did this
             rgb = get_rgb(threshed["field"].T, OoP_axis_idx=None, layer=None, geometry=None)
             # we need to color every quiver vertex individually, each cone has cres+1
@@ -1181,7 +1194,7 @@ def show_field_3D(quantity, cmap="mumax3", enable_quiver=True):
             plotter.add_mesh(quiver, scalars="z-component", cmap=cmap,
                              clim=(-1,1), lighting=False)
     else:  # use colored voxels
-        if "mumax" in cmap.lower():  # Use the mumax³ colorscheme
+        if "hsl" in cmap.lower():  # Use the HSL colorscheme
             # don't need to set opacity for geometry, threshold did this
             threshed.cell_data["rgb"] = get_rgb(threshed["field"].T,
                                    OoP_axis_idx=None, layer=None, geometry=None)

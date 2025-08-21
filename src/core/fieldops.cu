@@ -318,8 +318,9 @@ __device__ real3 getRGB(real3 vec) {
   // double precision colors.
 
   // HSL
+  // no z in saturation so color sphere is continuous!
   float H = atan2f(vec.y, vec.x);
-  float S = norm(vec);
+  float S = sqrt(vec.x * vec.x + vec.y * vec.y);  // norm(vec);
   float L = 0.5f + 0.5f * vec.z;
 
   // HSL to RGB

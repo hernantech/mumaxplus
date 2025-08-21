@@ -408,21 +408,20 @@ def downsample(field: _np.ndarray, new_shape: tuple, intrinsic: bool = True) -> 
 SIprefix_to_magnitude = {'q': -30, 'r': -27, 'y': -24, 'z': -21, 'a': -18,
                          'f': -15, 'p': -12, 'n': -9, 'µ': -6, 'm': -3, 'c': -2, 'd': -1,
                          '': 0, 'da': 1, 'h': 2, 'k': 3, 'M': 6, 'G': 9, 'T': 12,
-                         'E': 15, 'Z': 18, 'Y': 21, 'R': 24, 'Q': 30}
+                         'P': 15, 'E': 18, 'Z': 21, 'Y': 24, 'R': 27, 'Q': 30}
 
-def SIprefix_to_mul(unit: Literal['f', 'p', 'n', 'µ', 'm', 'c', 'd', '', 'da', 'h', 'k', 'M', 'G', 'T']) -> float:
+def SIprefix_to_mul(unit) -> float:
     return 10**SIprefix_to_magnitude[unit]
 
 magnitude_to_SIprefix = {v: k for k, v in SIprefix_to_magnitude.items()}
 
-def appropriate_SIprefix(n: float|_np.ndarray,
-                         unit_prefix: Literal['f', 'p', 'n', 'µ', 'm', 'c', 'd', '', 'da', 'h', 'k', 'M', 'G', 'T']='',
+def appropriate_SIprefix(n: float|_np.ndarray, unit_prefix='',
                          only_thousands=True) -> tuple[float, str]:
-    """ Converts `n` (which already has SI prefix `unit_prefix` for whatever unit
-        it is in) to a reasonable number with a new SI prefix. Returns a tuple
-        with (the new scalar values, the new SI prefix).If `only_thousands` is
-        True (default), then centi, deci, deca and hecto are not used.
-        Example: converting 0.0000238 ms would be `appropriate_SIprefix(0.0000238, 'm')` -> `(23.8, 'n')`
+    """Converts `n` (which already has SI prefix `unit_prefix` for whatever unit
+    it is in) to a reasonable number with a new SI prefix. Returns a tuple
+    with (the new scalar values, the new SI prefix).If `only_thousands` is
+    True (default), then centi, deci, deca and hecto are not used.
+    Example: converting 0.0000238 ms would be `appropriate_SIprefix(0.0000238, 'm')` -> `(23.8, 'n')`
     """
     # If `n` is an array, use the average of absolute values as representative of the scale
     value = _np.average(_np.abs(n)) if isinstance(n, _np.ndarray) else n

@@ -5,7 +5,6 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from tqdm import tqdm
 
 from mumaxplus import World, Grid, Ferromagnet
 from mumaxplus.util import twodomain, plot_field

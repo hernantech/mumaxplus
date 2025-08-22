@@ -617,6 +617,7 @@ class _Plotter:
         # colorbar
         self.enable_colorbar = enable_colorbar
         self.colorbar_kwargs = colorbar_kwargs.copy()
+        self.number_of_colorbars_added = 0
 
         # imshow
         self.imshow_kwargs = imshow_kwargs.copy()
@@ -777,6 +778,8 @@ class _Plotter:
             divider = _make_axes_locatable(self.ax)
             cbar_kwargs["cax"] = divider.append_axes(position="right", size="5%", pad="5%")
 
+        self.number_of_colorbars_added += 1
+
         return self.ax.figure.colorbar(cp, **cbar_kwargs)
 
     def replace_get_cursor_data(self):
@@ -904,9 +907,28 @@ class _Plotter:
                 fig = self.ax.figure
                 w0, h0 = fig.get_size_inches()
                 hw_ratio = hw_ratio ** 0.7  # get closer to square ratio
-                w1 = _np.sqrt(w0 * h0 / hw_ratio)
-                if self.enable_colorbar: w1 += 1.0  # leave space for cbar
-                h1 = h0*w0 / w1  # keep area the same
+
+                # add space per colorbar
+                vertical_cbar = True  # default
+                if "location" in self.colorbar_kwargs.keys():  # location has priority
+                    if (self.colorbar_kwargs["location"] == "top" or
+                        self.colorbar_kwargs["location"] == "bottom"):
+                        vertical_cbar = False
+                elif ("orientation" in self.colorbar_kwargs.keys() and
+                    self.colorbar_kwargs["orientation"] == "horizontal"):
+                        vertical_cbar = False
+
+                # same area, different ratio
+                inch_per_cbar = 0.8
+                if vertical_cbar:
+                    w1 = _np.sqrt(w0 * h0 / hw_ratio)
+                    w1 += self.number_of_colorbars_added * inch_per_cbar
+                    h1 = h0*w0 / w1
+                else:
+                    h1 = _np.sqrt(w0 * h0 * hw_ratio)
+                    h1 += self.number_of_colorbars_added * inch_per_cbar
+                    w1 = h0*w0 / h1
+
                 fig.set_size_inches(w1, h1)
         else:
             self.ax.set_aspect("auto")

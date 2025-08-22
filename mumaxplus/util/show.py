@@ -900,8 +900,9 @@ class _Plotter:
                 fig = self.ax.figure
                 w0, h0 = fig.get_size_inches()
                 hw_ratio = hw_ratio ** 0.7  # get closer to square ratio
-                w1 = _np.sqrt(w0 * h0 / hw_ratio)  # keep area the same
-                h1 = w1 * hw_ratio
+                w1 = _np.sqrt(w0 * h0 / hw_ratio)
+                if self.enable_colorbar: w1 += 1.0  # leave space for cbar
+                h1 = h0*w0 / w1  # keep area the same
                 fig.set_size_inches(w1, h1)
         else:
             self.ax.set_aspect("auto")

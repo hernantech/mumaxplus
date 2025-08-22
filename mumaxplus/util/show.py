@@ -519,7 +519,8 @@ class _Plotter:
     :func:`plot_field`, but not to be instantiated or manipulated by the
     user.
     """
-    def __init__(self, field_quantity, out_of_plane_axis, layer, component, geometry,
+    def __init__(self, field_quantity,
+                 out_of_plane_axis, layer, component, geometry, field,
                  file_name, show, ax, figsize, title, xlabel, ylabel,
                  imshow_symmetric_clim, imshow_kwargs,
                  enable_colorbar, colorbar_kwargs,
@@ -528,8 +529,8 @@ class _Plotter:
         """see the docstring of :func:`plot_field`."""
 
         # check field_quantity input
-        if not isinstance(field_quantity, _mxp.FieldQuantity) and \
-           not isinstance(field_quantity, _np.ndarray):
+        is_quantity = isinstance(field_quantity, _mxp.FieldQuantity)
+        if not is_quantity and not isinstance(field_quantity, _np.ndarray):
             raise TypeError("The first argument should be a FieldQuantity or an ndarray.")
         
         if len(field_quantity.shape) != 4:
@@ -537,6 +538,9 @@ class _Plotter:
                 "The field quantity has the wrong number of dimensions: "
                 + f"{len(field_quantity.shape)} instead of 4."
             )
+
+        if (is_quantity and field is not None and field.shape != field_quantity.shape):
+            raise ValueError("The field_quantity and field need to have the same shape.")
 
         # components
         self.ncomp = field_quantity.shape[0]
@@ -558,15 +562,15 @@ class _Plotter:
         self.hor_axis_idx, self.vert_axis_idx, self.OoP_axis_idx = _get_axis_components(out_of_plane_axis)
 
         # split types to know what we're working with
-        if isinstance(field_quantity, _mxp.FieldQuantity):
-            field = field_quantity.eval()
+        if is_quantity:
+            _field = field if field is not None else field_quantity.eval()
             self.quantity = field_quantity
         else:
-            field = _np.copy(field_quantity)
+            _field = field_quantity
             self.quantity = None
 
         # only need 2D slice of field
-        self.field_2D = slice_field_right_handed(field, self.OoP_axis_idx, self.layer)
+        self.field_2D = slice_field_right_handed(_field, self.OoP_axis_idx, self.layer)
         self.field_shape = field_quantity.shape
 
         # geometry
@@ -961,6 +965,7 @@ class _Plotter:
 def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
                out_of_plane_axis: Literal['x', 'y', 'z'] = 'z', layer: int = 0,
                component: Optional[int] = None, geometry: Optional[_np.ndarray] = None,
+               field: Optional[_np.ndarray] = None,
                file_name: Optional[str] = None, show: Optional[bool] = None,
                ax: Optional[Axes] = None, figsize: Optional[tuple[float, float]] = None,
                title: Optional[str] = None, xlabel: Optional[str] = None, ylabel: Optional[str] = None,
@@ -1002,6 +1007,13 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
     geometry : numpy.ndarray, optional
         The geometry of the field_quantity with shape (nz, ny, nx) to mask
         scalar field plots where geometry is False.
+
+    field : numpy.ndarray, optional
+        If given and if `field_quantity` is a mumaxplus.FieldQuantity, this
+        field will be plotted instead of evaluating `field_quantity` (again).
+        `field_quantity` will still be used for dressing the plot (extent, name,
+        unit, ...).
+        If `field_quantity` is a numpy.ndarray then `field` is ignored.
 
     file_name : string, optional
         If given, the resulting figure will be saved with the given file name.
@@ -1080,7 +1092,8 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
     ax : matplotlib.axes.Axes
         The resulting Axes on which is plotted.
     """
-    plotter = _Plotter(field_quantity, out_of_plane_axis, layer, component, geometry,
+    plotter = _Plotter(field_quantity,
+                       out_of_plane_axis, layer, component, geometry, field,
                        file_name, show, ax, figsize, title, xlabel, ylabel,
                        imshow_symmetric_clim, imshow_kwargs,
                        enable_colorbar, colorbar_kwargs,

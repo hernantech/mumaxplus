@@ -7,6 +7,10 @@
 #include "voronoi.hpp"
 #include "wrappers.hpp"
 
+#ifdef _MSC_VER  
+  #include <BaseTsd.h>
+  typedef SSIZE_T ssize_t;
+#endif
 
 void wrap_voronoi(py::module& m) {
     py::class_<VoronoiTessellator>(m, "VoronoiTessellator")

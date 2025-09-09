@@ -310,7 +310,7 @@ Field operator*(const Field& a, const Field& x) {
 // --------------------------------------------------
 // fieldGetRGB
 
-const float pi = 3.1415926535897931f;
+__device__ const float pi = 3.1415926535897931f;
 
 /// Transform 3D vector with norm<=1 to its RGB representation
 __device__ real3 getRGB(real3 vec) {

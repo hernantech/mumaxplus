@@ -1214,8 +1214,9 @@ def show_field_3D(quantity, cmap="HSL", enable_quiver=True):
         cone = _pv.Cone(center=(1/4, 0, 0), radius=0.32, height=1, resolution=cres)
         factor = min(cell_size[0:2]) if shape[2]==1 else min(cell_size)
         factor *= 0.95  # no touching
+        factor /= _np.max(_np.linalg.norm(threshed["field"], axis=1))  # proper magnitude support
 
-        quiver = threshed.glyph(orient="field", scale=False, factor=factor, geom=cone)
+        quiver = threshed.glyph(orient="field", factor=factor, geom=cone)
 
         # color
         if "hsl" in cmap.lower():  # Use the HSL colorscheme

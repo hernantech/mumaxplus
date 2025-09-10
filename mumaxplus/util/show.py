@@ -1167,7 +1167,7 @@ def show_magnet_geometry(magnet):
     plotter.show()
 
 
-def show_field_3D(quantity, cmap="HSL", enable_quiver=True):
+def show_field_3D(quantity, cmap="HSL", enable_quiver=True, symmetric_clim=True):
     """Plot a :func:`mumaxplus.FieldQuantity` with 3 components as a vectorfield.
 
     Parameters
@@ -1181,6 +1181,8 @@ def show_field_3D(quantity, cmap="HSL", enable_quiver=True):
     enable_quiver : boolean, optional, default: True
         If set to True, a cone is placed at each cell indicating the direction.
         If False, colored voxels are used instead.
+    symmetric_clim : bool, default=True
+        Whether to have symmetric color limits if the given cmap is not "HSL".
     """
 
     if not isinstance(quantity, _mxp.FieldQuantity):
@@ -1227,8 +1229,12 @@ def show_field_3D(quantity, cmap="HSL", enable_quiver=True):
             plotter.add_mesh(quiver, scalars="rgb", rgb=True, lighting=False)
         else:  # matplotlib colormap
             quiver.point_data["z-component"] = _np.repeat(threshed["field"][:,2], cres+1, axis=0)
+            clim = None
+            if symmetric_clim:
+                vmax = _np.max(_np.abs(quiver["z-component"]))
+                clim = (-vmax, vmax)
             plotter.add_mesh(quiver, scalars="z-component", cmap=cmap,
-                             clim=(-1,1), lighting=False)
+                             clim=clim, lighting=False)
     else:  # use colored voxels
         if "hsl" in cmap.lower():  # Use the HSL colorscheme
             # don't need to set opacity for geometry, threshold did this
@@ -1237,8 +1243,12 @@ def show_field_3D(quantity, cmap="HSL", enable_quiver=True):
             plotter.add_mesh(threshed, scalars="rgb", rgb=True, lighting=False)
         else:  # matplotlib colormap
             threshed.cell_data["z-component"] = threshed["field"][:,2]
+            clim = None
+            if symmetric_clim:
+                vmax = _np.max(_np.abs(threshed["z-component"]))
+                clim = (-vmax, vmax)
             plotter.add_mesh(threshed, scalars="z-component", cmap=cmap,
-                             clim=(-1,1), lighting=False)
+                             clim=clim, lighting=False)
 
     # final touches
     plotter.add_mesh(image_data.outline(), color="white", lighting=False)

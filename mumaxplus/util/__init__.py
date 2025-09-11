@@ -5,7 +5,7 @@ from .config import twodomain, antivortex, blochskyrmion, neelskyrmion, vortex
 from .config import gaussian_spherical_OoP, gaussian_spherical_IP, gaussian_uniform_IP
 from .formulary import *
 from .mfm import MFM
-from .show import get_rgb, get_rgba, plot_field, show_magnet_geometry, show_field_3D, show_regions
+from .show import get_rgb, get_rgba, plot_field, inspect_field, show_magnet_geometry, show_field_3D, show_regions
 from .shape import *
 from .voronoi import VoronoiTessellator
 
@@ -23,6 +23,7 @@ __all__ = [
     # show
     "get_rgb", "get_rgba",
     "plot_field",
+    "inspect_field",
     "show_magnet_geometry",
     "show_field_3D",
     "show_regions",

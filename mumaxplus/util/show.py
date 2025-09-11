@@ -251,6 +251,21 @@ def _quantity_2D_extent(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         return (left, right, bottom, top)
     return None
 
+
+def _get_colorbar_verticality(colorbar_kwargs: dict) -> bool:
+    """Get the verticality of the colorbar depending on the given keyword
+    arguments. This follows the logic of the matplotlib library.
+    """
+    if "location" in colorbar_kwargs.keys():  # location has priority
+        if (colorbar_kwargs["location"] == "top" or
+            colorbar_kwargs["location"] == "bottom"):
+            return False
+    elif ("orientation" in colorbar_kwargs.keys() and
+        colorbar_kwargs["orientation"] == "horizontal"):
+        return False
+
+    return True  # default
+
 # ----- downsample -----
 
 def _get_downsampled_meshgrid(old_size: tuple[int, int], new_size: tuple[int, int],
@@ -908,19 +923,9 @@ class _Plotter:
                 w0, h0 = fig.get_size_inches()
                 hw_ratio = hw_ratio ** 0.7  # get closer to square ratio
 
-                # add space per colorbar
-                vertical_cbar = True  # default
-                if "location" in self.colorbar_kwargs.keys():  # location has priority
-                    if (self.colorbar_kwargs["location"] == "top" or
-                        self.colorbar_kwargs["location"] == "bottom"):
-                        vertical_cbar = False
-                elif ("orientation" in self.colorbar_kwargs.keys() and
-                    self.colorbar_kwargs["orientation"] == "horizontal"):
-                        vertical_cbar = False
-
-                # same area, different ratio
+                # same area, different ratio, add space per colorbar
                 inch_per_cbar = 0.8
-                if vertical_cbar:
+                if _get_colorbar_verticality(self.colorbar_kwargs):
                     w1 = _np.sqrt(w0 * h0 / hw_ratio)
                     w1 += self.number_of_colorbars_added * inch_per_cbar
                     h1 = h0*w0 / w1
@@ -1056,22 +1061,18 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         The title of the Axes. `None` will generate a default title, while an
         empty string won't set any title.
 
-    xlabel : str, optional
-        The label of the x-axis. `None` will generate a default label, while an
-        empty string won't set any xlabel.
-
-    ylabel : str, optional
-        The label of the y-axis. `None` will generate a default label, while an
-        empty string won't set any ylabel.
+    xlabel, ylabel : str, optional
+        The label of the x/y-axis. `None` will generate a default label, while
+        an empty string won't set any label.
 
     imshow_symmetric_clim : bool, default=False
         Whether to set zero as the central color if a scalar field is plotted
         in the image.
-        This is ignored if vmin or vmax is given in `imshow_kwargs`
+        This is ignored if vmin or vmax is given in `imshow_kwargs`.
         This is best used with diverging colormaps, like "bwr".
 
     imshow_kwargs : dict, default={}
-        Keyword arguments to pass to `matplotlib.axes.Axes.imshow`.
+        Keyword arguments to pass to `matplotlib.axes.Axes.imshow`, e.g. "cmap".
 
     enable_colorbar : bool, default=True
         Whether to automatically add a colorbar to the figure of the Axes when relevant.
@@ -1124,6 +1125,248 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
     return plotter.plot()
 
 # ----- end of plot_field -----
+# ----- inspect_field -----
+
+def inspect_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
+                  out_of_plane_axis: Literal['x', 'y', 'z'] = 'z', layer: int = 0,
+                  geometry: Optional[_np.ndarray] = None,
+                  field: Optional[_np.ndarray] = None,
+                  file_name: Optional[str] = None, show: Optional[bool] = None,
+                  figsize: Optional[tuple[float, float]] = None,
+                  nrows: Optional[bool] = None, ncols: Optional[bool] = None,
+                  suptitle: Optional[str] = None,
+                  xlabel: Optional[str] = None, ylabel: Optional[str] = None,
+                  symmetric_clim: bool = False, imshow_kwargs: dict = {},
+                  enable_colorbar: bool = True, shared_colorbar : bool = False,
+                  colorbar_kwargs: dict = {}):
+    """Plot every component of a :func:`mumaxplus.FieldQuantity` or
+    `numpy.ndarray` as a scalar field subplot on one figure.
+    
+    Parameters
+    ----------
+    field_quantity : mumaxplus.FieldQuantity or numpy.ndarray
+        The field_quantity needs to have 4 dimensions with the shape (ncomp, nx, ny, nz).
+        Additional dressing of the Axes is done if given a mumaxplus.FieldQuantity.
+
+    out_of_plane_axis : string, default="z"
+        The axis pointing out of plane: "x", "y" or "z". The other two are plotted according to a right-handed coordinate system.
+
+        - "x": z over y
+        - "y": x over z
+        - "z": y over x
+
+    layer : int, default=0
+        The index to take of the `out_of_plane_axis`.
+
+    geometry : numpy.ndarray, optional
+        The geometry of the field_quantity with shape (nz, ny, nx) to mask plots
+        where geometry is False.
+
+    field : numpy.ndarray, optional
+        If given and if `field_quantity` is a mumaxplus.FieldQuantity, this
+        field will be plotted instead of evaluating `field_quantity` (again).
+        `field_quantity` will still be used for dressing the plot (extent, name,
+        unit, ...).
+        If `field_quantity` is a numpy.ndarray then `field` is ignored.
+
+    file_name : string, optional
+        If given, the resulting figure will be saved with the given file name.
+
+    show : bool, optional
+        Whether to call `matplotlib.pyplot.show` at the end.
+        If None (default), `matplotlib.pyplot.show` will be called only if no
+        `file_name` has been provided.
+
+    figsize : tuple[float] of size 2, optional
+        The size of the new figure created. Automatically tries to find suitable
+        figsize if not given.
+
+    nrows, ncols : int, optional
+        The number of rows/columns of the subplot grid. If only one is defined,
+        the other will be made large enough to accommodate all components of the
+        field_quantity. If both are None (default), a suitable arrangement will
+        be sought.
+    
+    suptitle : str, optional
+        The suptitle of the Figure. `None` will generate a default title, while
+        an empty string won't set any title.
+
+    xlabel, ylabel : str, optional
+        The label of the x/y-axes of all lowest/leftmost Axes respectively.
+        `None` will generate a default label, while an empty string won't set
+        any label.
+
+    symmetric_clim : bool, default=False
+        Whether to set zero as the central color. This is ignored if vmin or
+        vmax is given in `imshow_kwargs`.
+        This is best used with diverging colormaps, like "bwr".
+
+    imshow_kwargs : dict, default={}
+        Keyword arguments to pass to `matplotlib.axes.Axes.imshow`, e.g. "cmap".
+
+    enable_colorbar : bool, default=True
+        Whether to add (a) colorbar(s) to the figure of the Axes.
+
+    shared_colorbar : bool, default=False
+        Whether to share one colorbar with the color limits (vmin, vmax) between
+        all plots.
+    
+    colorbar_kwargs : dict, default={}
+        Keyword arguments to pass to `matplotlib.figure.Figure.colorbar`.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The created figure.
+    axs : matplotlib.axes.Axes or array of Axes
+        All the resulting Axes on which is plotted.
+    """
+    # --- gather variables ---
+    _imshow_kwargs = imshow_kwargs.copy()
+
+    ncomp = field_quantity.shape[0]
+
+    is_quantity = isinstance(field_quantity, _mxp.FieldQuantity)
+    if is_quantity and field is None:
+        field = field_quantity.eval()  # evaluate once
+
+    enable_individual_colorbar = enable_colorbar and not shared_colorbar
+    enable_shared_colorbar = enable_colorbar and shared_colorbar
+
+    hor_axis_idx, vert_axis_idx, OoP_axis_idx = _get_axis_components(out_of_plane_axis)
+    # get typical ratio of one plot
+    left, right, bottom, top = _quantity_2D_extent(field_quantity, hor_axis_idx, vert_axis_idx)
+    hw_ratio = (top - bottom) / (right - left)
+
+    # nrows and ncols
+    if nrows is None and ncols is None:  # find suitable arrangement
+        # find roughly appropriate rectangle that is certainly large enough
+        n_s = max(1, int(_np.sqrt(ncomp)))  # small factor
+        n_l = max(1, int(_np.ceil(ncomp / n_s)))  # large factor
+
+        # choose maximally square layout
+        nrows, ncols = (n_l, n_s) if hw_ratio < 1. else (n_s, n_l)
+
+    elif nrows is None:  # make enough space
+        nrows = int(_np.ceil(ncomp / ncols))
+    elif ncols is None:
+        ncols = int(_np.ceil(ncomp / nrows))
+    else:
+        nrows, ncols = int(nrows), int(ncols)
+        if ncols * nrows < ncomp:  # check user input
+            raise ValueError(
+                f"nrows = {nrows} and ncols = {ncols} does not leave enough " + 
+                f"room to plot {ncomp} component{'' if ncomp == 1 else 's'}.")
+
+    # --- figsize ---
+    if figsize is None:
+        # add space per colorbar
+        vertical_cbar = _get_colorbar_verticality(colorbar_kwargs)
+        number_of_cbars = 0
+        if enable_shared_colorbar: number_of_cbars = 1
+        elif enable_individual_colorbar:
+            number_of_cbars = ncols if vertical_cbar else nrows
+
+        # roughly calculate appropriate figsize by giving each subplot an area
+        w0, h0 = 4.8, 3.6
+        fig_area = (ncols * nrows) * (w0 * h0)
+        fig_hw_ratio = ((hw_ratio ** 0.7) * nrows / ncols)  # slightly closer to square
+        inch_per_cbar = 0.8
+
+        if vertical_cbar:
+            w1 = _np.sqrt(fig_area / fig_hw_ratio)
+            w1 += number_of_cbars * inch_per_cbar
+            h1 = fig_area / w1
+        else:
+            h1 = _np.sqrt(fig_area * fig_hw_ratio)
+            h1 += number_of_cbars * inch_per_cbar
+            w1 = fig_area / h1
+
+        figsize = (w1, h1)
+
+    # fig, axs
+    fig, axs = _plt.subplots(nrows=nrows, ncols=ncols,
+                             sharex="all", sharey="all", figsize=figsize)
+    try: flat_axs = axs.flatten()
+    except: flat_axs = [axs]
+
+    if suptitle is None:  # make default suptitle
+        # e.g.: ferromagnet_1:magnetization in z-layer 16
+        qname = field_quantity.name if is_quantity else ""
+        # layer of OoP axis if non-trivial
+        layer_str = ""
+        if field.shape[3 - OoP_axis_idx] > 1:
+            layer_str = f"${out_of_plane_axis}$-layer {layer}"
+        # combine
+        suptitle = qname + " in " + layer_str if qname and layer_str else qname + layer_str
+
+    if suptitle:
+        fig.suptitle(suptitle)
+
+    if enable_shared_colorbar:
+        # --- find vmin vmax ---
+        vmin = _np.min(field)
+        vmax = _np.max(field)
+        if symmetric_clim:
+            vmax = max(abs(vmin), abs(vmax))
+            vmin = - vmax
+
+        # don't overwrite user preference, unless it is None (automatic)
+        for key, value in [("vmin", vmin), ("vmax", vmax)]:
+            if not key in _imshow_kwargs.keys() or \
+                (key in _imshow_kwargs and _imshow_kwargs[key] == None):
+                _imshow_kwargs[key] = value
+
+        # --- add one shared colorbar ---
+        vmin, vmax = _imshow_kwargs["vmin"], _imshow_kwargs["vmax"]
+        cbar_kwargs = colorbar_kwargs.copy()  # copy user kwargs
+
+        # add label and formatter if neither is user-provided
+        if not any([k in cbar_kwargs.keys() for k in ["label", "format", "ticks"]]):
+            # Name the quantity with unit if possible
+            label = ""
+            if is_quantity and (qname := field_quantity.name):
+                label += qname
+            if is_quantity and (unit := field_quantity.unit):
+                _, prefix = appropriate_SIprefix(max(abs(vmin), abs(vmax)))
+                label += f" ({prefix}{unit})"
+                cbar_kwargs["format"] = UnitScalarFormatter(prefix, unit)
+            cbar_kwargs["label"] = label
+
+        # create custom colorbar
+        norm = _matplotlib.colors.Normalize(vmin, vmax)
+        cmap = _imshow_kwargs["cmap"] if "cmap" in imshow_kwargs.keys() else None
+        sm = _matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
+
+        fig.colorbar(sm, ax=axs, **cbar_kwargs)
+
+
+    # --- plotting of individual components ---
+    for component in range(ncomp):
+        ax = flat_axs[component]
+
+        xlabel_ = xlabel if component // ncols == nrows - 1 else ''  # bottom row
+        ylabel_ = ylabel if component % ncols == 0 else ''  # left column
+
+        plot_field(field_quantity, out_of_plane_axis=out_of_plane_axis,
+                   layer=layer, component=component, geometry=geometry,
+                   field=field, show=False, title=f"component {component}",
+                   ax=ax, xlabel=xlabel_, ylabel=ylabel_,
+                   imshow_symmetric_clim=symmetric_clim,
+                   imshow_kwargs=_imshow_kwargs,  # modified
+                   enable_colorbar=enable_individual_colorbar,
+                   colorbar_kwargs=colorbar_kwargs,  # user-provided, not modified
+                   enable_quiver=False)
+
+    if file_name:
+        fig.savefig(file_name)
+
+    show_ = file_name is None if show is None else show
+    if show_: _plt.show()
+
+    return fig, axs
+
+# ----- end of inspect_field -----
 
 def show_regions(magnet, layer=0):
     """Plot the boundaries between regions of the given magnet."""

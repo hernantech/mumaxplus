@@ -872,9 +872,10 @@ class _Plotter:
         """Dress `self.ax` to make it prettier using all known information.
 
         Sets:
-        - xlilm and ylim
+        - xlim and ylim
         - xlabel and ylabel, including units
         - aspect ratio
+        - relevant title
         - get_cursor_data in order to inspect raw vector data
         - format_cursor_data for more human readable data.
         """

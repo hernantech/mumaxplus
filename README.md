@@ -16,7 +16,7 @@ All demonstrations in the paper were simulated using version [v1.1.0](https://gi
 You should install these yourself
 * CUDA Toolkit 10.0 or later
 * A C++ compiler which supports C++17, such as GCC
-* On Windows (good luck): MSVC 2019
+* On Windows: MSVC 2019 or 2022
 
 These will be installed automatically within the conda environment
 * cmake 4.0.0
@@ -70,29 +70,21 @@ add_definitions(-DFP_PRECISION=DOUBLE) # FP_PRECISION should be SINGLE or DOUBLE
 
 ### Windows
 
-**These instructions are old and worked at some point (2021), but not today. If you are brave enough to try Windows and you manage to get it working, please let us know!**
-
-1. Install Visual Studio 2019 and the desktop development with C++ workload
-2. Install CUDA Toolkit 10.x
-3. Install cmake
-4. Download the pybind11 submodule with git
-```
+1. Install Microsoft Visual Studio with the "Desktop development with C++" workload
+2. Install the [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit-archive) *(version 10.0 or later)*
+3. Download the pybind11 submodule with git:
+```powershell
 git submodule init
 git submodule update
 ```
-5. Install Python packages using conda
-```
+4. Install Python packages using conda:
+```powershell
 conda env create -f environment.yml
 ```
-6. Build `mumaxplus` using `setuptools`
-```
-activate mumaxplus
-python setup.py develop
-```
-or `conda`
-```
+5. Build `mumaxplus` using `pip` and `setuptools`:
+```powershell
 conda activate mumaxplus
-conda develop -b .
+pip install -v .
 ```
 
 ## Documentation

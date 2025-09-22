@@ -59,7 +59,7 @@ You should install the following tools yourself. Click the arrows for more detai
 * **Windows:** [Download](https://git-scm.com/downloads) and install.
 * **Linux:** `sudo apt install git`
 
-👉 *Check Git installation with: `git –-version`*
+👉 *Check Git installation with: `git --version`*
 
 </details>
 

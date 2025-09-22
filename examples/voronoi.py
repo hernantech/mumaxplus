@@ -54,4 +54,4 @@ world.timesolver.run(0.1e-9)
 plot_field(magnet.magnetization)
 plot_field(magnet.kc1, imshow_kwargs={"cmap": "Greys"})
 
-show_regions(magnet)
+show_regions(magnet, geometry=magnet.geometry, imshow_kwargs={"cmap":"Greys"})

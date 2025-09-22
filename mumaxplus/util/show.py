@@ -1369,23 +1369,33 @@ def inspect_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
 
 # ----- end of inspect_field -----
 
-def show_regions(magnet, layer=0):
-    """Plot the boundaries between regions of the given magnet."""
-    regions_array = magnet.regions
-    assert regions_array.ndim == 3, f"Expected 3D array, got {regions_array.ndim}D"
+def show_regions(magnet,
+                 out_of_plane_axis: Literal['x', 'y', 'z'] = 'z', layer: int = 0,
+                 component: Optional[int] = None, geometry: Optional[_np.ndarray] = None,
+                 field: Optional[_np.ndarray] = None,
+                 file_name: Optional[str] = None, show: Optional[bool] = None,
+                 ax: Optional[Axes] = None, figsize: Optional[tuple[float, float]] = None,
+                 title: Optional[str] = None,
+                 xlabel: Optional[str] = None, ylabel: Optional[str] = None,
+                 imshow_symmetric_clim: bool = False, imshow_kwargs: dict = {}) -> Axes:
+    """Plot the boundaries between regions of the given magnet.
+    For details about the function parameters, see :func:`plot_field`."""
+    regions = magnet.regions
+    boundaries = _np.zeros((1,) + regions.shape, dtype=int)
 
-    regions = regions_array[layer]
-    boundaries = _np.zeros_like(regions, dtype=bool)
+    boundaries[0, 1:, :, :] |= regions[1:, :, :] != regions[:-1, :, :]   # up
+    boundaries[0, :, 1:, :] |= regions[:, 1:, :] != regions[:, :-1, :]   # left
 
-    boundaries[1:, :] |= regions[1:, :] != regions[:-1, :]   # up
-    boundaries[:, 1:] |= regions[:, 1:] != regions[:, :-1]   # left
+    # Reuse _Plotter logic, but no need for quiver map or cbar
+    if title is None:
+        title = magnet.name + ": Region boundaries"
+    plotter = _Plotter(boundaries, out_of_plane_axis, layer, component, geometry, field,
+                       file_name, show, ax, figsize, title, xlabel, ylabel,
+                       imshow_symmetric_clim, imshow_kwargs,
+                       None, {},
+                       None, None, None, None, {})
+    return plotter.plot()
 
-    _plt.figure()
-    _plt.imshow(~boundaries, cmap='gray', origin="lower", extent=_quantity_2D_extent(magnet))
-    _plt.xlabel("$x$ (m)")
-    _plt.ylabel("$y$ (m)")
-    _plt.title(magnet.name + ":region_boundaries")
-    _plt.show()
 
 
 # ========== 3D pyvista plotting ==========

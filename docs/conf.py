@@ -32,7 +32,8 @@ extensions = [
     "sphinx.ext.autosummary", 
     "sphinxcontrib.video",
     "sphinx_copybutton",
-    "sphinx.ext.napoleon"
+    "sphinx.ext.napoleon",
+    "sphinx_design"
 ]
 
 toc_object_entries_show_parents = 'hide'

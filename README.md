@@ -2,8 +2,10 @@
 
 # mumax⁺
 
-A more versatile and extensible GPU-accelerated micromagnetic simulator written in C++ and CUDA with a Python interface. This project is in development alongside its popular predecessor [mumax³](https://github.com/mumax/3).
+A versatile and extensible GPU-accelerated micromagnetic simulator written in C++ and CUDA with a Python interface. This project is in development alongside its popular predecessor [mumax³](https://github.com/mumax/3).
 If you have any questions, feel free to use the [mumax mailing list](https://groups.google.com/g/mumax2).
+
+**Documentation, tutorials and examples can be found on the [mumax⁺ website](https://mumax.github.io/plus/).**
 
 ## Paper
 
@@ -26,7 +28,7 @@ You should install the following tools yourself. Click the arrows for more detai
 * **Windows**: Download an installer from [the CUDA website](https://developer.nvidia.com/cuda-toolkit-archive).
 * **Linux**: Use `sudo apt-get install nvidia-cuda-toolkit`, or [download an installer](https://developer.nvidia.com/cuda-toolkit-archive).
 
-> Make especially sure that everything CUDA-related (like `nvcc`) can be found inside your PATH.
+> ⚠️ Make especially sure that everything CUDA-related (like `nvcc`) can be found inside your PATH.
 > On Linux, for instance, this can be done by editing your `~/.bashrc` file and adding the following lines:
 >
 > ```bash
@@ -46,7 +48,7 @@ You should install the following tools yourself. Click the arrows for more detai
 * **Linux:** `sudo apt-get install gcc`
   * ⚠️ each CUDA version has a maximum supported `gcc` version. [This StackOverflow answer](https://stackoverflow.com/a/46380601) lists the maximum supported `gcc` version for each CUDA version. If necessary, use `sudo apt-get install gcc-<min_version>` instead, with the appropriate `<min_version>`.
 * **Windows:**
-  * CUDA does not support the `gcc` compiler on Windows, so download and install [Microsoft Visual Studio](https://visualstudio.microsoft.com/downloads/) with the "Desktop development with C++" workload. After installing, check if the path to `cl.exe` was added to your `PATH` environment variable. If not, add it manually, e.g. `C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.29.30133\bin\HostX64\x64`.
+  * CUDA does not support the `gcc` compiler on Windows, so download and install [Microsoft Visual Studio](https://visualstudio.microsoft.com/downloads/) with the "Desktop development with C++" workload. After installing, check if the path to `cl.exe` was added to your `PATH` environment variable (i.e., check whether `where cl.exe` returns an appropriate path like `C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.29.30133\bin\HostX64\x64`). If not, add it manually.
 
 👉 *Check C installation with: `gcc --version` on Linux and `where.exe cl.exe` on Windows.*
 
@@ -57,11 +59,17 @@ You should install the following tools yourself. Click the arrows for more detai
 * **Windows:** [Download](https://git-scm.com/downloads) and install.
 * **Linux:** `sudo apt install git`
 
-👉 *Check Git installation with: `git –version`*
+👉 *Check Git installation with: `git –-version`*
 
 </details>
 
-<details><summary>CPython <i>(version ≥ 3.8 recommended)</i>, pip and miniconda/anaconda</summary></details>
+<details><summary>CPython <i>(version ≥ 3.8 recommended)</i>, pip and miniconda/anaconda</summary>
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;All these Python-related tools should be included in a standard installation of [Anaconda or Miniconda](https://www.anaconda.com/download/success).
+
+👉 *Check installation with `python --version`, `pip --version` and `conda --version`.*
+
+</details>
 
 ### Building mumax⁺
 
@@ -94,13 +102,13 @@ conda activate mumaxplus
 Finally, build and install mumax⁺ using pip.
 
 ```bash
-pip install -v .
+pip install .
 ```
 
 > [!TIP]
-> If changes are made to the code, then ``pip install -v .`` can be used to rebuild mumax⁺.
+> If changes are made to the code, then ``pip install -v .`` can be used to rebuild mumax⁺, with the `-v` flag enabling verbose debug information.
 >
-> If you want to change only the Python code, without needing to reinstall, ``pip install -ve .`` can also be used.
+> If you want to change only the Python code, without needing to reinstall after each change, ``pip install -ve .`` can also be used.
 
 > [!TIP]
 > The source code can also be compiled with double precision, by changing `FP_PRECISION` in `CMakeLists.txt` from `SINGLE` to `DOUBLE` before rebuilding.

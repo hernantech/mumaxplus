@@ -85,10 +85,6 @@ Finally, build and install mumax⁺ using pip.
 
    pip install .
 
-.. dropdown:: Troubleshooting installation
-
-   - (*Windows*) If you encounter the error ``No CUDA toolset found``, try copying the files in ``NVIDIA GPU Computing Toolkit/CUDA/<version>/extras/visual_studio_integration/MSBuildExtensions`` to ``Microsoft Visual Studio/<year>/<edition>/MSBuild/Microsoft/VC/<version>/BuildCustomizations``. See `these instructions <https://github.com/NVlabs/tiny-cuda-nn/issues/164#issuecomment-1280749170>`_ for more details.
-
 .. tip::
 
    If changes are made to the code, then ``pip install -v .`` can be used to rebuild mumax⁺, with the ``-v`` flag enabling verbose debug information.
@@ -102,3 +98,7 @@ Finally, build and install mumax⁺ using pip.
    .. code-block:: cmake
 
       add_definitions(-DFP_PRECISION=DOUBLE) # FP_PRECISION > should be SINGLE or DOUBLE
+
+.. dropdown:: Troubleshooting
+
+   - (*Windows*) If you encounter the error ``No CUDA toolset found``, try copying the files in ``NVIDIA GPU Computing Toolkit/CUDA/<version>/extras/visual_studio_integration/MSBuildExtensions`` to ``Microsoft Visual Studio/<year>/<edition>/MSBuild/Microsoft/VC/<version>/BuildCustomizations``. See `these instructions <https://github.com/NVlabs/tiny-cuda-nn/issues/164#issuecomment-1280749170>`_ for more details.

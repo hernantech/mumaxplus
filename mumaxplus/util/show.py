@@ -279,14 +279,13 @@ def _get_colorbar_verticality(colorbar_kwargs: dict) -> bool:
 
 # ----- downsample -----
 
-def _get_downsampled_meshgrid(old_size: tuple[int, int], new_size: tuple[int, int],
+def _get_resampled_meshgrid(old_size: tuple[int, int], new_size: tuple[int, int],
                               quantity: Optional[_mxp.FieldQuantity] = None,
                               hor_axis_idx: Literal[0, 1, 2] = 0,
                               vert_axis_idx: Literal[0, 1, 2] = 1) \
                                 -> tuple[_np.ndarray, _np.ndarray]:
-    """Get a 2D meshrgid of downsampled coordinates, which indicate cell centers
-    of a new smaller grid overlayed on top of an old larger grid, with all edges
-    aligned.
+    """Get a 2D meshrgid of resampled coordinates, which indicate cell centers
+    of a new grid overlayed on top of an old grid, with all edges aligned.
 
     If the `quantity` is not given, the center of the bottom left cell with
     index [0, 0] is assumed to live at coordinate (0, 0), with cell sizes of 1.
@@ -296,10 +295,9 @@ def _get_downsampled_meshgrid(old_size: tuple[int, int], new_size: tuple[int, in
     Parameters
     ----------
     old_size : tuple of 2 integers
-        The old 2D shape (n_horizontal, n_vertical) of an assumed large array.
+        The old 2D shape (n_horizontal, n_vertical) of an array.
     new_size : tuple of 2 integers
-        The new 2D shape (n_horizontal, n_vertical) of an assumed smaller array.
-        Both entries need to be smaller or equal to the entries of `old_size`.
+        The new 2D shape (n_horizontal, n_vertical) of an array.
     quantity : mumaxplus.FieldQuantity, optional
         If given, the coordinates are translated to align with the origin of its
         grid and are scaled with the world's cellsizes.
@@ -754,7 +752,7 @@ class _Plotter:
         nx_new = max(int(nx_old / self.arrow_size), 1)
         ny_new = max(int(ny_old / self.arrow_size), 1)
 
-        X, Y = _get_downsampled_meshgrid((nx_old, ny_old), (nx_new, ny_new), self.quantity,
+        X, Y = _get_resampled_meshgrid((nx_old, ny_old), (nx_new, ny_new), self.quantity,
                                         self.hor_axis_idx, self.vert_axis_idx)
 
         sampled_field = downsample(self.field_2D, (ncomp, ny_new, nx_new))

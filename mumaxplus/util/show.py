@@ -695,7 +695,6 @@ class _Plotter:
         if self.enable_quiver:
             self.arrow_size = arrow_size
             self.arrow_size_fraction = 3/4  # make arrow smaller than max
-            self.quiver_cmap = quiver_cmap
             self.quiver_kwargs = quiver_kwargs.copy()  # leave user input alone
             self.quiver_kwargs.setdefault("pivot", "middle")
 
@@ -705,6 +704,15 @@ class _Plotter:
                 self.quiver_symmetric_clim = quiver_symmetric_clim
             else:
                 self.quiver_symmetric_clim = False
+
+            # quiver cmap
+            if "cmap" in self.quiver_kwargs.keys():
+                if quiver_cmap is None:  # use quiver_cmap, not cmap kwarg
+                    self.quiver_cmap = self.quiver_kwargs.pop("cmap")
+                else:  # both are specified for some reason
+                    raise ValueError("The quiver colormap is provided twice.")
+            else:
+                self.quiver_cmap = quiver_cmap
 
     def plot_image(self):
         # imshow
@@ -1150,7 +1158,6 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
 
     quiver_kwargs : dict, default={}
         Keyword arguments to pass to `matplotlib.axes.Axes.quiver`.
-        Use `quiver_cmap` instead of the keyword argument "cmap".
         This is only relevant for field quantities with 3 components.
 
     Returns

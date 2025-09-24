@@ -52,6 +52,6 @@ magnet.scale_exchange = 0.9
 world.timesolver.run(0.1e-9)
 
 plot_field(magnet.magnetization)
-plot_field(magnet.kc1, imshow_kwargs={"cmap": "Greys"})
+plot_field(magnet.kc1, imshow_kwargs={"cmap": "Greys"}, enable_colorbar=False)
 
 show_regions(magnet, geometry=magnet.geometry, imshow_kwargs={"cmap":"Greys"})

@@ -796,8 +796,8 @@ class _Plotter:
         `self.enable_colorbar` is True.
         
         If relevant, this adds appropriate unit to the label with a
-        `UnitScalarFormatter` as formatter, unless "label", "format" or "ticks"
-        is specified by the user in `self.colorbar_kwargs`.
+        `UnitScalarFormatter` as formatter, unless "label" or "format" is
+        specified by the user in `self.colorbar_kwargs`.
 
         A new Axes for the colorbar is created to the right of the plot with
         equal height, unless any kwargs about location, orientation or size have
@@ -824,7 +824,7 @@ class _Plotter:
         cbar_kwargs = self.colorbar_kwargs.copy()
 
         # add label and formatter if neither is user-provided
-        if not any([k in cbar_kwargs.keys() for k in ["label", "format", "ticks"]]):
+        if not any([k in cbar_kwargs.keys() for k in ["label", "format"]]):
             label = name
             if self.quantity and (unit := self.quantity.unit):
                 vmin, vmax = cp.get_clim()
@@ -1127,7 +1127,7 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
     colorbar_kwargs : dict, default={}
         Keyword arguments to pass to `matplotlib.figure.Figure.colorbar`.
         Relevant formatting and labeling with units is done automatically,
-        unless the keyword arguments "label", "format" or "ticks" are specified.
+        unless the keyword arguments "label" or "format" are specified.
 
     enable_quiver : bool, optional
         Whether to plot arrows on top of the colored image. If None (default),
@@ -1268,7 +1268,7 @@ def inspect_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
     colorbar_kwargs : dict, default={}
         Keyword arguments to pass to `matplotlib.figure.Figure.colorbar`.
         Relevant formatting and labeling with units is done automatically,
-        unless the keyword arguments "label", "format" or "ticks" are specified.
+        unless the keyword arguments "label" or "format" are specified.
 
     Returns
     -------
@@ -1378,7 +1378,7 @@ def inspect_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         cbar_kwargs = colorbar_kwargs.copy()  # copy user kwargs
 
         # add label and formatter if neither is user-provided
-        if not any([k in cbar_kwargs.keys() for k in ["label", "format", "ticks"]]):
+        if not any([k in cbar_kwargs.keys() for k in ["label", "format"]]):
             # Name the quantity with unit if possible
             label = ""
             if is_quantity and (qname := field_quantity.name):

@@ -53,7 +53,7 @@ def vector_to_rgb(x, y, z):
     continuous.
     """
     H = _np.arctan2(y, x)
-    S = _np.sqrt(x ** 2 + y ** 2)  # + z ** 2)  # no z so color sphere is continuous!
+    S = _np.sqrt(x ** 2 + y ** 2)  # no z so color sphere is continuous!
     L = 0.5 + 0.5 * z
     return hsl_to_rgb(H, S, L)
 
@@ -81,14 +81,16 @@ def get_rgb(field_quantity: _mxp.FieldQuantity|_np.ndarray,
     Parameters
     ----------
     field_quantity : mumaxplus.FieldQuantity or numpy.ndarray
-        The vector field_quantity of which to get the rgb representation. It
-        needs to have the shape (3, nx, ny, nz) in order to slice along a given
-        layer.
+        The vector field_quantity of which to get the rgb representation. It can
+        have any number of axes, but the first axis must contain the 3 vector
+        components. It needs to have the shape (3, nz, ny, nx) in order to index
+        along a given layer.
     OoP_axis_idx : int, optional, default=2
         The index of the axis pointing out of plane: 0, 1 and 2 correspond to
         x, y and z respectively. The other two are aranged according to a
         right-handed coordinate system.
-        Calculates rgb for all layers if None.
+        If None, both OoP_axis_idx and layer are ignored and rgb values are
+        calculated for all cells.
         This cannot be interpreted if field_quantity does not have 4 dimensions.
     layer : int, optional
         Layer index of the out-of-plane axis.
@@ -105,6 +107,11 @@ def get_rgb(field_quantity: _mxp.FieldQuantity|_np.ndarray,
     rgb : ndarray
         It has shape (n_vertical, n_horizontal, 3) if OoP_axis_idx and layer are
         given, otherwize (*field_quantity.shape[1:], 3).
+
+    See Also
+    --------
+    vector_to_rgb
+    get_rgba
     """
 
     is_quantity = isinstance(field_quantity, _mxp.FieldQuantity)
@@ -128,7 +135,7 @@ def get_rgb(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         raise IndexError(f"OoP_axis_index should be 0, 1, 2 or None, not {OoP_axis_idx}.")
 
 
-    # FieldQuantity in 3D or with trivial slice: use CUDA
+    # FieldQuantity in 3D or with trivial index: use CUDA
     if (is_quantity and ((layer is None or OoP_axis_idx is None)  # 3D
         or (field_quantity.shape[-1-OoP_axis_idx] == 1))):  # trivial
 
@@ -170,6 +177,10 @@ def get_rgba(field_quantity: _mxp.FieldQuantity|_np.ndarray,
     See docstring of :func:`get_rgb` for an explanation of the parameters.
     
     Additionally, the geometry is used to set alpha value to 0 where geometry is False.
+
+    See Also
+    --------
+    get_rgb
     """
     rgb = get_rgb(field_quantity, OoP_axis_idx, layer, geometry)
 
@@ -215,7 +226,7 @@ def slice_field_right_handed(field: _np.ndarray,
     OoP_axis_idx : int, default=2
         Index of the out of plane axis. 0, 1 and 2 represent x, y and z respectively.
     layer : int, default=0
-        Chosen index of the out-of-plane axis.
+        Chosen index at which to slice the out-of-plane axis.
 
     Returns
     -------
@@ -223,7 +234,7 @@ def slice_field_right_handed(field: _np.ndarray,
         Right-handed two dimensional slice of given field.
     """
     slice_ = [slice(None)] * field.ndim
-    slice_[-1 - OoP_axis_idx] = layer  # slice correct axis at chosen layer
+    slice_[-1 - OoP_axis_idx] = layer  # index correct axis at chosen layer
     field_2D = field[tuple(slice_)]
 
     if OoP_axis_idx == 1:  # y
@@ -279,8 +290,8 @@ def _get_downsampled_meshgrid(old_size: tuple[int, int], new_size: tuple[int, in
 
     If the `quantity` is not given, the center of the bottom left cell with
     index [0, 0] is assumed to live at coordinate (0, 0), with cell sizes of 1.
-    If it is given, [0, 0] lives at the system's origin, with cell sizes
-    corresponding to the system's cell sizes.
+    If it is given, [0, 0] lives at the origin of its grid, with cell sizes
+    corresponding to the world's cell sizes.
 
     Parameters
     ----------
@@ -290,8 +301,8 @@ def _get_downsampled_meshgrid(old_size: tuple[int, int], new_size: tuple[int, in
         The new 2D shape (n_horizontal, n_vertical) of an assumed smaller array.
         Both entries need to be smaller or equal to the entries of `old_size`.
     quantity : mumaxplus.FieldQuantity, optional
-        If given, the coordinates are translated to align with the system's
-        origin and are scaled with the system's cellsizes.
+        If given, the coordinates are translated to align with the origin of its
+        grid and are scaled with the world's cellsizes.
     hor_axis_idx : int, default=0
         The index of the horizontal axis (0:x, 1:y, 2:z). This is only used for
         the origin and cell size if `quantity` is given.
@@ -388,10 +399,10 @@ def downsample(field: _np.ndarray, new_shape: tuple, intrinsic: bool = True) -> 
     ndim = field.ndim
 
     if ndim != len(new_shape):
-        raise ValueError("new shape does not have same number of dimensions as old shape")
+        raise ValueError("New shape does not have same number of dimensions as old shape.")
     for n_old, n_new in zip(old_shape, new_shape):
         if n_new > n_old:
-            raise ValueError("Can't resample to larger arrays, can only downsample")
+            raise ValueError("Can't resample to larger arrays, can only downsample.")
 
     new_field = _np.zeros(new_shape)
     on_shape_ratio = _np.array([old_shape[i] / new_shape[i] for i in range(ndim)])
@@ -432,11 +443,29 @@ magnitude_to_SIprefix = {v: k for k, v in SIprefix_to_magnitude.items()}
 
 def appropriate_SIprefix(n: float|_np.ndarray, unit_prefix='',
                          only_thousands=True) -> tuple[float, str]:
-    """Converts `n` (which already has SI prefix `unit_prefix` for whatever unit
-    it is in) to a reasonable number with a new SI prefix. Returns a tuple
-    with (the new scalar values, the new SI prefix).If `only_thousands` is
-    True (default), then centi, deci, deca and hecto are not used.
-    Example: converting 0.0000238 ms would be `appropriate_SIprefix(0.0000238, 'm')` -> `(23.8, 'n')`
+    """Converts `n` with old SI prefix `unit_prefix` to a reasonable number with
+    a new SI prefix.
+
+    Parameters
+    ----------
+    n : float or numpy.ndarray
+        Number or array of numbers to convert.
+    unit_prefix : str, default=''
+        Previous SI prefix of the unit of `n`.
+    only_thousands : bool, default=True
+        If True (default), then centi, deci, deca and hecto are not used.
+
+    Returns
+    -------
+    tuple[float, str]
+        The new scalar value(s) and the new appropriate SI prefix.
+
+    Examples
+    --------
+    >>> appropriate_SIprefix(0.0000238, 'm')
+    (23.8, 'n')
+
+    Converting 0.0000238 ms returns 23.8 ns.
     """
     # If `n` is an array, use the average of absolute values as representative of the scale
     value = _np.average(_np.abs(n)) if isinstance(n, _np.ndarray) else n
@@ -450,14 +479,16 @@ def appropriate_SIprefix(n: float|_np.ndarray, unit_prefix='',
     nearest_magnitude = (round(_np.log10(abs(value))) if value != 0 else 0) + offset_magnitude
     # Make sure it is in the known range
     nearest_magnitude = _np.clip(nearest_magnitude,
-                                min(SIprefix_to_magnitude.values()),
-                                max(SIprefix_to_magnitude.values()))
+                                 min(SIprefix_to_magnitude.values()),
+                                 max(SIprefix_to_magnitude.values()))
     
     supported_magnitudes = magnitude_to_SIprefix.keys()
     if only_thousands: supported_magnitudes = [mag for mag in supported_magnitudes if (mag % 3) == 0]
     for supported_magnitude in sorted(supported_magnitudes):
         if supported_magnitude <= nearest_magnitude:
             used_magnitude = supported_magnitude
+        else:
+            break
     
     return (n/10**(used_magnitude - offset_magnitude), magnitude_to_SIprefix[used_magnitude])
 
@@ -755,7 +786,14 @@ class _Plotter:
     def add_cbar(self, cp, name: str = ""):
         """Adds a colorbar associated with the given plot next to `self.ax`, if
         `self.enable_colorbar` is True.
-        Also adds appropriate unit to the label if relevant.
+        
+        If relevant, this adds appropriate unit to the label with a
+        `UnitScalarFormatter` as formatter, unless "label", "format" or "ticks"
+        is specified by the user in `self.colorbar_kwargs`.
+
+        A new Axes for the colorbar is created to the right of the plot with
+        equal height, unless any kwargs about location, orientation or size have
+        been set in `self.colorbar_kwargs`.
 
         Parameters
         ----------
@@ -822,7 +860,7 @@ class _Plotter:
 
             trans = im_self.get_transform().inverted()  # changes with viewing window
             trans += data_to_array_transform
-            point = trans.transform([event.x, event.y])  # mouse coordinates
+            point = trans.transform([event.x, event.y])  # cursor coordinates
 
             if any(_np.isnan(point)):
                 return None
@@ -1005,8 +1043,8 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
     """Plot a :func:`mumaxplus.FieldQuantity` or `numpy.ndarray`
     with 1 component as a scalar field, with 3 components as a vector field or
     plot one selected component as a a scalar field.
-    Vector fields are plotted using an HSL colorscheme, with
-    optionally added arrows.
+    Vector fields are plotted using an HSL colorscheme, with optionally added
+    arrows. This differs slightly from mumax³, see :func:`get_rgb`.
     
     Parameters
     ----------
@@ -1022,7 +1060,7 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         - "z": y over x
 
     layer : int, default=0
-        The index to take of the `out_of_plane_axis`.
+        Chosen index at which to slice the out-of-plane axis.
 
     component : int, optional
         The component of the field_quantity to plot as an image.
@@ -1067,7 +1105,7 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         an empty string won't set any label.
 
     imshow_symmetric_clim : bool, default=False
-        Whether to set zero as the central color if a scalar field is plotted
+        Whether to map zero to the central color if a scalar field is plotted
         in the image.
         This is ignored if vmin or vmax is given in `imshow_kwargs`.
         This is best used with diverging colormaps, like "bwr".
@@ -1080,41 +1118,49 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
     
     colorbar_kwargs : dict, default={}
         Keyword arguments to pass to `matplotlib.figure.Figure.colorbar`.
+        Relevant formatting and labeling with units is done automatically,
+        unless the keyword arguments "label", "format" or "ticks" are specified.
 
     enable_quiver : bool, optional
         Whether to plot arrows on top of the colored image. If None (default),
         arrows are only added if no specific component for the image has been
         given.
-        This is only relevant for fieldquantities with 3 components.
+        This is only relevant for field quantities with 3 components.
 
     arrow_size : float, default=16
         Length of an arrow as a number of cells, so one arrow is designated to
         an area of `arrow_size` by `arrow_size`.
-        This is only relevant for fieldquantities with 3 components.
+        This is only relevant for field quantities with 3 components.
 
     quiver_cmap : string, optional
         A colormap to use for the quiver. By default, no colormap is used, so
         the arrows are a solid color. If set to "HSL", the 3D vector data is
-        used for an HSL colorscheme. Any matplotlib colormap can also be given
-        to color the arrows according to the out-of-plane component.
-        This is only relevant for fieldquantities with 3 components.
+        used for an HSL colorscheme, where the x- and y-components control the
+        hue and saturation and the z-component controls lightness, regardless of
+        the `out_of_plane_axis`. Any matplotlib colormap can also be given to
+        color the arrows according to the out-of-plane component.
+        This is only relevant for field quantities with 3 components.
 
     quiver_symmetric_clim : bool, default=True
-        Whether to set zero as the central color if the arrows are colored
+        Whether to map zero to the central color if the arrows are colored
         according to the out-of-plane component of the vector field.
         This is ignored if clim is given in `quiver_kwargs`.
         This is best used with diverging colormaps, like "bwr".
-        This is only relevant for fieldquantities with 3 components.
+        This is only relevant for field quantities with 3 components.
 
     quiver_kwargs : dict, default={}
         Keyword arguments to pass to `matplotlib.axes.Axes.quiver`.
         Use `quiver_cmap` instead of the keyword argument "cmap".
-        This is only relevant for fieldquantities with 3 components.
+        This is only relevant for field quantities with 3 components.
 
     Returns
     -------
     ax : matplotlib.axes.Axes
         The resulting Axes on which is plotted.
+
+    See Also
+    --------
+    get_rgb, get_rgba
     """
     plotter = _Plotter(field_quantity,
                        out_of_plane_axis, layer, component, geometry, field,
@@ -1157,7 +1203,7 @@ def inspect_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         - "z": y over x
 
     layer : int, default=0
-        The index to take of the `out_of_plane_axis`.
+        Chosen index at which to slice the out-of-plane axis.
 
     geometry : numpy.ndarray, optional
         The geometry of the field_quantity with shape (nz, ny, nx) to mask plots
@@ -1198,7 +1244,7 @@ def inspect_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         any label.
 
     symmetric_clim : bool, default=False
-        Whether to set zero as the central color. This is ignored if vmin or
+        Whether to map zero to the central color. This is ignored if vmin or
         vmax is given in `imshow_kwargs`.
         This is best used with diverging colormaps, like "bwr".
 
@@ -1214,6 +1260,8 @@ def inspect_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
     
     colorbar_kwargs : dict, default={}
         Keyword arguments to pass to `matplotlib.figure.Figure.colorbar`.
+        Relevant formatting and labeling with units is done automatically,
+        unless the keyword arguments "label", "format" or "ticks" are specified.
 
     Returns
     -------
@@ -1429,7 +1477,8 @@ def show_field_3D(quantity, cmap="HSL", enable_quiver=True, symmetric_clim=True)
     quantity : mumaxplus.FieldQuantity (3 components)
         The `FieldQuantity` to plot as a vectorfield.
     cmap : string, optional, default: "HSL"
-        A colormap to use. By default an HSL colormap is used.
+        A colormap to use. By default an HSL colormap is used. This differs
+        slightly from mumax³, see :func:`get_rgb`.
         Any matplotlib colormap can also be given to color the vectors according
         to their z-component. It's best to use diverging colormaps, like "bwr".
     enable_quiver : boolean, optional, default: True
@@ -1437,6 +1486,10 @@ def show_field_3D(quantity, cmap="HSL", enable_quiver=True, symmetric_clim=True)
         If False, colored voxels are used instead.
     symmetric_clim : bool, default=True
         Whether to have symmetric color limits if the given cmap is not "HSL".
+    
+    See Also
+    --------
+    get_rgb
     """
 
     if not isinstance(quantity, _mxp.FieldQuantity):

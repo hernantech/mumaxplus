@@ -670,8 +670,8 @@ class _Plotter:
         im_extent = _quantity_2D_extent(field_quantity, self.hor_axis_idx, self.vert_axis_idx)
         self.imshow_kwargs.setdefault("extent", im_extent)
         self.imshow_kwargs.setdefault("origin", "lower")
-        # vector image or scalar image?
-        self.vector_image_bool = self.ncomp == 3 and self.comp is None
+        # vector image or scalar image? vector if field with 3 components, but none selected
+        self.vector_image_bool = ((self.ncomp == 3) and (self.comp is None))
 
         # imshow symmetric clim
         if not "vmin" in self.imshow_kwargs.keys() and \

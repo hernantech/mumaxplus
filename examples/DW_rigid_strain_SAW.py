@@ -61,7 +61,8 @@ magnet.rigid_norm_strain.add_time_term(lambda t: (np.cos(w*t), 0., 0.),
 
 # plot the initial and final magnetization
 fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1, sharex="all", sharey="all")
-plot_field(magnet.magnetization, ax=ax1, title="Initial magnetization", xlabel="", show=False)
+plot_field(magnet.magnetization, ax=ax1, title="Initial magnetization",
+           xlabel="", show=False, enable_quiver=False)
 
 # function to estimate the position of the DW
 def DW_position(magnet):
@@ -75,7 +76,8 @@ output = world.timesolver.solve(np.linspace(0, run, steps+1), quantity_dict, tqd
 print("done!")
 
 # final magnetization
-plot_field(magnet.magnetization, ax=ax2, title="Final magnetization", show=True)
+plot_field(magnet.magnetization, ax=ax2, title="Final magnetization", show=True,
+           enable_quiver=False)
 
 # plot DW position as a function of time
 plt.plot(np.array(output["time"])*1e9, np.array(output["DW_pos"])*1e6)

@@ -169,7 +169,7 @@ Neelskyrmion
                                                charge=1,
                                                polarization=1)
 
-    plot_field(magnet.magnetization, arrow_size=8)
+    plot_field(magnet.magnetization)
 
 .. image:: ../images/neelskyrm_mag.png
    :align: center
@@ -184,7 +184,7 @@ Blochskyrmion
                                                 charge=1,
                                                 polarization=1)
 
-    plot_field(magnet.magnetization, arrow_size=8)
+    plot_field(magnet.magnetization)
 
 .. image:: ../images/blochskyrm_mag.png
    :align: center

@@ -1043,7 +1043,7 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
                title: Optional[str] = None, xlabel: Optional[str] = None, ylabel: Optional[str] = None,
                imshow_symmetric_clim: bool = False, imshow_kwargs: dict = {},
                enable_colorbar: bool = True, colorbar_kwargs: dict = {},
-               enable_quiver: bool = None, arrow_size: float = 16.,
+               enable_quiver: bool = None, arrow_size: float = 8.,
                quiver_cmap: Optional[str]= None, quiver_symmetric_clim: bool = True,
                quiver_kwargs : dict = {}) -> Axes:
     """Plot a :func:`mumaxplus.FieldQuantity` or `numpy.ndarray`
@@ -1133,7 +1133,7 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         given.
         This is only relevant for field quantities with 3 components.
 
-    arrow_size : float, default=16
+    arrow_size : float, default=8
         Length of an arrow as a number of cells, so one arrow is designated to
         an area of `arrow_size` by `arrow_size`.
         This is only relevant for field quantities with 3 components.

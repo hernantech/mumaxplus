@@ -79,6 +79,11 @@ html_title = "mumax⁺"
 html_static_path = ['_static']
 html_css_files = ['logo.css', 'custom.css']
 
+html_js_files = [
+    ('https://www.googletagmanager.com/gtag/js?id=G-YEPT1QRBRH', {'async': 'async'}),
+    'google-analytics.js',
+]
+
 html_favicon = "_static/nimble-plus.png"
 
 rst_epilog = """

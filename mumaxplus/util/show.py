@@ -834,8 +834,11 @@ class _Plotter:
         # make cax so cbar scales with ax height, if no sizes/positions are user-provided
         if not any([k in cbar_kwargs.keys() for k in ["ax", "cax", "location",
             "orientation", "fraction", "shrink", "aspect", "pad", "anchor", "panchor"]]):
-            divider = _make_axes_locatable(self.ax)
-            cbar_kwargs["cax"] = divider.append_axes(position="right", size="5%", pad="5%")
+            if self.number_of_colorbars_added == 0:  # new divider if none exists
+                self.divider = _make_axes_locatable(self.ax)
+            # leave fixed space for ticks and label of other cbar
+            pad = "5%" if self.number_of_colorbars_added == 0 else 0.8
+            cbar_kwargs["cax"] = self.divider.append_axes(position="right", size="5%", pad=pad)
 
         self.number_of_colorbars_added += 1
 

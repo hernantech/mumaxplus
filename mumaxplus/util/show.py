@@ -1367,6 +1367,7 @@ def inspect_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         if symmetric_clim:
             vmax = max(abs(vmin), abs(vmax))
             vmin = - vmax
+            _imshow_kwargs.setdefault("cmap", "bwr")
 
         # don't overwrite user preference, unless it is None (automatic)
         for key, value in [("vmin", vmin), ("vmax", vmax)]:
@@ -1392,7 +1393,7 @@ def inspect_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
 
         # create custom colorbar
         norm = _matplotlib.colors.Normalize(vmin, vmax)
-        cmap = _imshow_kwargs["cmap"] if "cmap" in imshow_kwargs.keys() else None
+        cmap = _imshow_kwargs["cmap"] if "cmap" in _imshow_kwargs.keys() else None
         sm = _matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
 
         fig.colorbar(sm, ax=axs, **cbar_kwargs)

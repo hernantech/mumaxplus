@@ -5,6 +5,7 @@ import matplotlib as _matplotlib
 import numpy as _np
 import math as _math
 import pyvista as _pv
+import warnings as _warnings
 
 from numbers import Integral, Number
 from typing import Optional, Literal
@@ -289,8 +290,8 @@ def _get_resampled_meshgrid(old_size: tuple[int, int], new_size: tuple[int, int]
 
     If the `quantity` is not given, the center of the bottom left cell with
     index [0, 0] is assumed to live at coordinate (0, 0), with cell sizes of 1.
-    If it is given, [0, 0] lives at the origin of its grid, with cell sizes
-    corresponding to the world's cell sizes.
+    If it is given, [0, 0] lives at the origin of the quantity's grid, with cell
+    sizes corresponding to the world's cell sizes.
 
     Parameters
     ----------
@@ -708,7 +709,9 @@ class _Plotter:
                 if quiver_cmap is None:  # use quiver_cmap, not cmap kwarg
                     self.quiver_cmap = self.quiver_kwargs.pop("cmap")
                 else:  # both are specified for some reason
-                    raise ValueError("The quiver colormap is provided twice.")
+                    _warnings.warn("The quiver colormap is provided twice, using `quiver_cmap`.")
+                    self.quiver_kwargs.pop("cmap")
+                    self.quiver_cmap = quiver_cmap
             else:
                 self.quiver_cmap = quiver_cmap
 

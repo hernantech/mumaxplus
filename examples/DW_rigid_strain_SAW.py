@@ -77,12 +77,11 @@ print("done!")
 
 # final magnetization
 plot_field(magnet.magnetization, ax=ax2, title="Final magnetization", show=True,
-           enable_quiver=False, file_name="../docs/images/DW_SAW.png")
+           enable_quiver=False)
 
 # plot DW position as a function of time
 plt.plot(np.array(output["time"])*1e9, np.array(output["DW_pos"])*1e6)
 plt.xlabel("Time (ns)")
 plt.ylabel("Domain wall position (µm)")
 plt.title("Domain wall position in time")
-plt.savefig("../docs/images/DW_SAW2.png")
 plt.show()

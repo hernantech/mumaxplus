@@ -106,8 +106,8 @@ def get_rgb(field_quantity: _mxp.FieldQuantity|_np.ndarray,
     Returns
     -------
     rgb : ndarray
-        It has shape (n_vertical, n_horizontal, 3) if OoP_axis_idx and layer are
-        given, otherwize (*field_quantity.shape[1:], 3).
+        It has shape ``(n_vertical, n_horizontal, 3)`` if OoP_axis_idx and layer
+        are given, otherwize ``(*field_quantity.shape[1:], 3)``.
 
     See Also
     --------
@@ -1078,9 +1078,10 @@ def plot_field(field_quantity: _mxp.FieldQuantity|_np.ndarray,
         The component of the field_quantity to plot as an image.
         If set to an integer, that component is plotted as a scalar field.
         If None (default), a field_quantity with
-            - 1 component is plotted as a scalar field
-            - 3 components is plotted as a vector field with an HSL colorscheme.
-            - a different number of components can't be plotted.
+
+        - 1 component is plotted as a scalar field
+        - 3 components is plotted as a vector field with an HSL colorscheme.
+        - a different number of components can't be plotted.
 
     geometry : numpy.ndarray, optional
         The geometry of the field_quantity with shape (nz, ny, nx) to mask

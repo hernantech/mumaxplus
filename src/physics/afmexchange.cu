@@ -50,8 +50,11 @@ __global__ void k_afmExchangeFieldSite(CuField hField,
         hField.setVectorInCell(idx, real3{0, 0, 0});
       return;
     }
-    if (msat.valueAt(idx) == 0. || msat2.valueAt(idx) == 0.) {
+    if (msat.valueAt(idx) == 0.) {  // total field is 0
       hField.setVectorInCell(idx, real3{0, 0, 0});
+      return;
+    }
+    if (msat2.valueAt(idx) == 0.) {  // no addition to the field
       return;
     }
 

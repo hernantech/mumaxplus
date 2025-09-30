@@ -1,8 +1,10 @@
 #include "system.hpp"
 
 #include <algorithm>
+#include <array>
 #include <stdexcept>
 #include <set>
+#include <string>
 
 #include "datatypes.hpp"
 #include "gpubuffer.hpp"
@@ -65,6 +67,12 @@ real3 System::center() const {
   real3 corner1 = cellPosition({0, 0, 0});
   real3 corner2 = cellPosition({size.x - 1, size.y - 1, size.z - 1});
   return (corner2 + corner1) / 2;
+}
+
+std::array<real, 6> System::extent() const {
+  real3 minEdge = origin() - 0.5 * cellsize();
+  real3 maxEdge = minEdge + int3_to_real3(grid().size()) * cellsize();
+  return {minEdge.x, maxEdge.x, minEdge.y, maxEdge.y, minEdge.z, maxEdge.z};
 }
 
 const GpuBuffer<bool>& System::geometry() const {

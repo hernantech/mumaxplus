@@ -10,7 +10,7 @@ Welcome to the documentation!
 GPU-accelerated micromagnetic simulator written in C++ and CUDA with a Python
 interface. This project is in development alongside
 `mumax³ <https://github.com/mumax/3>`_. If you have any questions, feel free to 
-use the `mumax mailing list <https://groups.google.com/g/mumax2>`_.
+use the `mumax⁺ GitHub Discussions <https://github.com/mumax/plus/discussions>`_.
 
 Citations
 ---------

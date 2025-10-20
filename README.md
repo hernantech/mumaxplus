@@ -19,11 +19,23 @@ All demonstrations in the paper were simulated using version [v1.1.0](https://gi
 
 ## Installation
 
+### Minimum Requirements
+
+These are the minimum requirements to run mumax⁺. Open the dropdowns for more details.
+
+<details><summary>NVIDIA GPU</summary>
+
+mumax⁺ should work on any NVIDIA GPU with any Compute Capability.
+
+</details>
+
 ### Dependencies
 
 You should install the following tools yourself. Click the arrows for more details.
 
-<details><summary>CUDA Toolkit <i>(version 10.0 or later)</i></summary>
+<details><summary>CUDA Toolkit</summary>
+
+To see which CUDA Toolkit works for your GPU's Compute Capability, check [this Stack Overflow post](https://stackoverflow.com/questions/28932864/which-compute-capability-is-supported-by-which-cuda-versions).
 
 * **Windows**: Download an installer from [the CUDA website](https://developer.nvidia.com/cuda-toolkit-archive).
 * **Linux**: Use `sudo apt-get install nvidia-cuda-toolkit`, or [download an installer](https://developer.nvidia.com/cuda-toolkit-archive).
@@ -147,6 +159,11 @@ or they are interactive notebooks (`.ipynb` files), which can be run using Jupyt
 ## Testing
 
 Several automated tests are located inside the `test/` directory. Type `pytest` inside the terminal to run them. Some are marked as `slow`, such as `test_mumax3_standardproblem5.py`. You can deselect those by running `pytest -m "not slow"`. Tests inside the `test/mumax3/` directory require external installation of mumax³. They are marked by `mumax3` and can be deselected in the same way.
+
+## Did I compile correctly?
+
+To check if you successfully compiled mumax⁺, we recommend you to run some [examples](#examples) from the `examples/` directory
+or to run the [tests](#testing) in the `test/` directory.
 
 ## Contributing
 

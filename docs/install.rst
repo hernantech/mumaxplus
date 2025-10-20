@@ -3,12 +3,23 @@
 Installation
 ============
 
+Minimum Requirements
+--------------------
+These are the minimum requirements to run mumax⁺. Open the dropdowns for more details.
+
+.. dropdown:: NVIDIA GPU
+
+   mumax⁺ should work on any NVIDIA GPU with any Compute Capability.
+
 Dependencies
 ------------
 
 You should install the following tools yourself. Open the dropdowns for more details.
 
-.. dropdown:: CUDA Toolkit *(version 10.0 or later)*
+.. dropdown:: CUDA Toolkit
+
+   To see which CUDA Toolkit works for your GPU's Compute Capability, check
+   `this Stack Overflow post <https://stackoverflow.com/questions/28932864/which-compute-capability-is-supported-by-which-cuda-versions>`_.
   
    -  **Windows**: Download an installer from `the CUDA website <https://developer.nvidia.com/cuda-toolkit-archive>`_.
    -  **Linux**: Use ``sudo apt-get install nvidia-cuda-toolkit``, or `download an installer <https://developer.nvidia.com/cuda-toolkit-archive>`_.

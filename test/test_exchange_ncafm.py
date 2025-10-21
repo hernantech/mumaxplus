@@ -82,7 +82,7 @@ class TestNcAfmExchange:
         for sub in magnet.sublattices:
             result = sub.exchange_field.eval()
             wanted = compute_fm_exchange_numpy(sub)
-            assert max_relative_error(result, wanted) < SRTOL
+            assert max_semirelative_error(result, wanted) < SRTOL
     
     def test_homo_exchange(self):
         world = World((1e3, 2e3, 3e3))
@@ -95,7 +95,7 @@ class TestNcAfmExchange:
             result = sub.homogeneous_exchange_field()
             sub2, sub3 = magnet.sublattices[(i+1)%3], magnet.sublattices[(i+2)%3]
             wanted = compute_homo_exchange_numpy(magnet, sub2, sub3)
-            assert max_relative_error(result, wanted) < SRTOL
+            assert max_semirelative_error(result, wanted) < SRTOL
 
     def test_inhomo_exchange(self):
         world = World((1e3, 2e3, 3e3))
@@ -108,7 +108,7 @@ class TestNcAfmExchange:
             sub2, sub3 = magnet.sublattices[(i+1)%3], magnet.sublattices[(i+2)%3]
             result = sub.inhomogeneous_exchange_field()
             wanted = compute_inhomo_exchange_numpy(magnet, sub2, sub3)
-            assert max_relative_error(result, wanted) < SRTOL
+            assert max_semirelative_error(result, wanted) < SRTOL
 
     def test_exchange_spiral(self):
         """This test compares numerical and analytical exchange energy for spiral

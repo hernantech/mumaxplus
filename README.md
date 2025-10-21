@@ -19,19 +19,10 @@ All demonstrations in the paper were simulated using version [v1.1.0](https://gi
 
 ## Installation
 
-### Minimum Requirements
-
-These are the minimum requirements to run mumax⁺. Open the dropdowns for more details.
-
-<details><summary>NVIDIA GPU</summary>
-
-mumax⁺ should work on any NVIDIA GPU with any Compute Capability.
-
-</details>
-
 ### Dependencies
 
-You should install the following tools yourself. Click the arrows for more details.
+mumax⁺ should work on any NVIDIA GPU with any Compute Capability. To get started
+you should install the following tools yourself. Click the arrows for more details.
 
 <details><summary>CUDA Toolkit</summary>
 

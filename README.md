@@ -126,6 +126,11 @@ pip install .
 
 </details>
 
+### Check the compilation
+
+To check if you successfully compiled mumax⁺, we recommend you to run some [examples](#examples) from the `examples/` directory
+or to run the [tests](#testing) in the `test/` directory.
+
 ## Documentation
 
 Documentation for mumax⁺ can be found at http://mumax.github.io/plus.
@@ -150,11 +155,6 @@ or they are interactive notebooks (`.ipynb` files), which can be run using Jupyt
 ## Testing
 
 Several automated tests are located inside the `test/` directory. Type `pytest` inside the terminal to run them. Some are marked as `slow`, such as `test_mumax3_standardproblem5.py`. You can deselect those by running `pytest -m "not slow"`. Tests inside the `test/mumax3/` directory require external installation of mumax³. They are marked by `mumax3` and can be deselected in the same way.
-
-## Did I compile correctly?
-
-To check if you successfully compiled mumax⁺, we recommend you to run some [examples](#examples) from the `examples/` directory
-or to run the [tests](#testing) in the `test/` directory.
 
 ## Contributing
 

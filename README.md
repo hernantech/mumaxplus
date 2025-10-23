@@ -2,8 +2,8 @@
 
 # mumax⁺
 
-A versatile and extensible GPU-accelerated micromagnetic simulator written in C++ and CUDA with a Python interface. This project is in development alongside its popular predecessor [mumax³](https://github.com/mumax/3).
-If you have any questions, feel free to use the [mumax mailing list](https://groups.google.com/g/mumax2).
+A versatile and extensible GPU-accelerated micromagnetic simulator written in C++ and CUDA with a Python interface. This project is in development alongside [mumax³](https://github.com/mumax/3).
+If you have any questions, feel free to use the [mumax⁺ GitHub Discussions](https://github.com/mumax/plus/discussions).
 
 **Documentation, tutorials and examples can be found on the [mumax⁺ website](https://mumax.github.io/plus/).**
 
@@ -21,9 +21,12 @@ All demonstrations in the paper were simulated using version [v1.1.0](https://gi
 
 ### Dependencies
 
-You should install the following tools yourself. Click the arrows for more details.
+mumax⁺ should work on any NVIDIA GPU. To get started you should install the
+following tools yourself. Click the arrows for more details.
 
-<details><summary>CUDA Toolkit <i>(version 10.0 or later)</i></summary>
+<details><summary>CUDA Toolkit</summary>
+
+To see which CUDA Toolkit works for your GPU's Compute Capability, check [this Stack Overflow post](https://stackoverflow.com/questions/28932864/which-compute-capability-is-supported-by-which-cuda-versions).
 
 * **Windows**: Download an installer from [the CUDA website](https://developer.nvidia.com/cuda-toolkit-archive).
 * **Linux**: Use `sudo apt-get install nvidia-cuda-toolkit`, or [download an installer](https://developer.nvidia.com/cuda-toolkit-archive).
@@ -116,6 +119,11 @@ pip install .
 > ```cmake
 > add_definitions(-DFP_PRECISION=DOUBLE) # FP_PRECISION > should be SINGLE or DOUBLE
 > ```
+
+### Check the compilation
+
+To check if you successfully compiled mumax⁺, we recommend you to run some [examples](#examples) from the `examples/` directory
+or to run the [tests](#testing) in the `test/` directory.
 
 <details><summary><h3>Troubleshooting</h3></summary>
 

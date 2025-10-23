@@ -2,7 +2,7 @@ import numpy as np
 
 from mumaxplus import Ferromagnet, Grid, World
 
-SRTOL = 1e-4
+SRTOL = 3e-7
 
 def max_semirelative_error(result, wanted):
     return np.max(np.abs(result - wanted) / np.max(np.abs(wanted)))

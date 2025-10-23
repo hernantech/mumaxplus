@@ -21,8 +21,8 @@ All demonstrations in the paper were simulated using version [v1.1.0](https://gi
 
 ### Dependencies
 
-mumax⁺ should work on any NVIDIA GPU with any Compute Capability. To get started
-you should install the following tools yourself. Click the arrows for more details.
+mumax⁺ should work on any NVIDIA GPU. To get started you should install the
+following tools yourself. Click the arrows for more details.
 
 <details><summary>CUDA Toolkit</summary>
 
@@ -120,16 +120,16 @@ pip install .
 > add_definitions(-DFP_PRECISION=DOUBLE) # FP_PRECISION > should be SINGLE or DOUBLE
 > ```
 
+### Check the compilation
+
+To check if you successfully compiled mumax⁺, we recommend you to run some [examples](#examples) from the `examples/` directory
+or to run the [tests](#testing) in the `test/` directory.
+
 <details><summary><h3>Troubleshooting</h3></summary>
 
 * (*Windows*) If you encounter the error `No CUDA toolset found`, try copying the files in `NVIDIA GPU Computing Toolkit/CUDA/<version>/extras/visual_studio_integration/MSBuildExtensions` to `Microsoft Visual Studio/<year>/<edition>/MSBuild/Microsoft/VC/<version>/BuildCustomizations`. See [these instructions](https://github.com/NVlabs/tiny-cuda-nn/issues/164#issuecomment-1280749170) for more details.
 
 </details>
-
-### Check the compilation
-
-To check if you successfully compiled mumax⁺, we recommend you to run some [examples](#examples) from the `examples/` directory
-or to run the [tests](#testing) in the `test/` directory.
 
 ## Documentation
 

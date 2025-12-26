@@ -13,6 +13,7 @@
 #include "ferromagnet.hpp"
 #include "fieldquantity.hpp"
 #include "fullmag.hpp"
+#include "local_dmi.hpp"
 #include "magnet.hpp"
 #include "magnetoelasticfield.hpp"
 #include "magnetoelasticforce.hpp"
@@ -29,6 +30,7 @@ void wrap_ferromagnet(py::module& m) {
   py::class_<Ferromagnet, Magnet>(m, "Ferromagnet")
       .def_property_readonly("magnetization", &Ferromagnet::magnetization)
 
+      .def_property_readonly("is_sublattice", &Ferromagnet::isSublattice)
       .def_readwrite("enable_demag", &Ferromagnet::enableDemag)
       .def_readwrite("enable_openbc", &Ferromagnet::enableOpenBC)
       .def_readwrite("enable_zhang_li_torque", &Ferromagnet::enableZhangLiTorque)
@@ -62,6 +64,7 @@ void wrap_ferromagnet(py::module& m) {
       .def_readonly("applied_potential", &Ferromagnet::appliedPotential)
       .def_readonly("conductivity", &Ferromagnet::conductivity)
       .def_readonly("amr_ratio", &Ferromagnet::amrRatio)
+      .def_readonly("frozen_spins", &Ferromagnet::frozenSpins)
       .def_readwrite("RelaxTorqueThreshold", &Ferromagnet::RelaxTorqueThreshold)
       .def_readonly("poisson_system", &Ferromagnet::poissonSystem)
       .def_readonly("B1", &Ferromagnet::B1)
@@ -76,7 +79,6 @@ void wrap_ferromagnet(py::module& m) {
   m.def("spin_transfer_torque", &spinTransferTorqueQuantity);
   m.def("max_torque", &maxTorqueQuantity);
 
-  m.def("demag_field", &demagFieldQuantity);
   m.def("demag_energy_density", &demagEnergyDensityQuantity);
   m.def("demag_energy", &demagEnergyQuantity);
 
@@ -90,12 +92,16 @@ void wrap_ferromagnet(py::module& m) {
   m.def("exchange_energy", &exchangeEnergyQuantity);  
   m.def("max_angle", py::overload_cast<const Ferromagnet*>(&maxAngle));
   // ferromagnetic sublattice
-  m.def("inhomogeneous_exchange_field", &inHomoAfmExchangeFieldQuantity);
   m.def("homogeneous_exchange_field", &homoAfmExchangeFieldQuantity);
-  m.def("inhomogeneous_exchange_energy_density", &inHomoAfmExchangeEnergyDensityQuantity);
+  m.def("inhomogeneous_exchange_field", &inHomoAfmExchangeFieldQuantity);
   m.def("homogeneous_exchange_energy_density", &homoAfmExchangeEnergyDensityQuantity);
-  m.def("inhomogeneous_exchange_energy", &inHomoAfmExchangeEnergyQuantity);
+  m.def("inhomogeneous_exchange_energy_density", &inHomoAfmExchangeEnergyDensityQuantity);
   m.def("homogeneous_exchange_energy", &homoAfmExchangeEnergyQuantity);
+  m.def("inhomogeneous_exchange_energy", &inHomoAfmExchangeEnergyQuantity);
+
+  m.def("homogeneous_dmi_field", &homoDmiFieldQuantity);
+  m.def("homogeneous_dmi_energy_density", &homoDmiEnergyDensityQuantity);
+  m.def("homogeneous_dmi_energy", &homoDmiEnergyQuantity);
   //
   m.def("dmi_field", &dmiFieldQuantity);
   m.def("dmi_energy_density", &dmiEnergyDensityQuantity);
@@ -123,6 +129,5 @@ void wrap_ferromagnet(py::module& m) {
   m.def("magnetoelastic_field", &magnetoelasticFieldQuantity);
   m.def("magnetoelastic_energy_density", &magnetoelasticEnergyDensityQuantity);
   m.def("magnetoelastic_energy", &magnetoelasticEnergyQuantity);
-
   m.def("magnetoelastic_force", &magnetoelasticForceQuantity);
 }

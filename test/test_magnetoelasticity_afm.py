@@ -1,7 +1,5 @@
 import numpy as np
 
-import matplotlib.pyplot as plt
-
 from mumaxplus import Grid, World, Antiferromagnet
 
 
@@ -56,9 +54,9 @@ class TestMelAfm:
 
         self.magnet.enable_elastodynamics = True
 
-        self.magnet.c11 = 283e9
-        self.magnet.c12 = 58e9
-        self.magnet.c44 = 166e9
+        self.magnet.C11 = 283e9
+        self.magnet.C12 = 58e9
+        self.magnet.C44 = 166e9
 
         # magnetoelasticity for both sublattices
         self.magnet.B1 = B1
@@ -76,7 +74,7 @@ class TestMelAfm:
         """Tests total effective body force to make sure it contains
         contributions of both sublattices.
         """
-        force = self.magnet.elastic_force.eval() + \
+        force = self.magnet.internal_body_force.eval() + \
                 self.magnet.sub1.magnetoelastic_force.eval() + \
                 self.magnet.sub2.magnetoelastic_force.eval()
         assert max_semirelative_error(self.magnet.effective_body_force.eval(), force) < SRTOL

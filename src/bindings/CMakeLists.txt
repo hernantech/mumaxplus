@@ -1,5 +1,9 @@
 project(mumaxplus)
 
+# disable pybind11::(thin_)lto, as this does not work with CUDA
+# https://github.com/pybind/pybind11/issues/4825
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
+
 add_subdirectory(pybind11)
 
 pybind11_add_module(_mumaxpluscpp
@@ -13,6 +17,8 @@ pybind11_add_module(_mumaxpluscpp
     wrap_fieldquantity.cpp
     wrap_grid.cpp
     wrap_magnet.cpp
+    wrap_mfm.cpp
+    wrap_ncafm.cpp
     wrap_parameter.cpp
     wrap_scalarquantity.cpp
     wrap_strayfield.cpp
@@ -23,6 +29,7 @@ pybind11_add_module(_mumaxpluscpp
     wrap_poissonsystem.cpp
     wrap_linsolver.cpp
     wrap_voronoi.cpp
+    wrap_traction.cpp
 )
 
 target_include_directories(_mumaxpluscpp PRIVATE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})

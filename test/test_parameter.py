@@ -97,6 +97,35 @@ def test_assign_scalar_time_dependent_term_mask(
         magnet.ku2 = (term, test_mask3)
 
 
+def test_assign_scalar_time_dependent_term_mask_func(
+    test_parameters: Tuple[World, Ferromagnet]
+):
+    world, magnet = test_parameters
+    # ncomp = 1
+    mask_value1 = 0.2
+    mask_value2 = 0.8
+    term = lambda t: 24 * np.sinc(t)
+
+    # correct mask shape
+    test_mask1 = lambda x, y, z: (mask_value1)
+    magnet.ku1 = (term, test_mask1)
+    assert magnet.ku1.is_dynamic == True
+    assert magnet.ku1.is_uniform == False
+    assert_almost_equal(magnet.ku1.eval(), mask_value1 * term(world.timesolver.time))
+
+    # mask without components
+    test_mask2 = lambda x, y, z: mask_value2
+    magnet.ku1 = (term, test_mask2)
+    assert magnet.ku1.is_dynamic == True
+    assert magnet.ku1.is_uniform == False
+    assert_almost_equal(magnet.ku1.eval(), mask_value2 * term(world.timesolver.time))
+
+    # incorrect mask shape
+    test_mask3 = lambda x, y, z: (mask_value1, mask_value2)
+    with pytest.raises(ValueError):
+        magnet.ku2 = (term, test_mask3)
+
+
 def test_add_multiple_scalar_time_dependent_terms(
     test_parameters: Tuple[World, Ferromagnet]
 ):
@@ -156,6 +185,7 @@ def test_assign_vector_time_dependent_term_mask(
     ncomp = 3
     mask_value1 = 0.2
     mask_value2 = 0.8
+    mask_values3 = (0.1, 0.2, 0.3)
     term = lambda t: (0, 1, 0.25 * np.sin(t))
     expected_value = np.zeros(shape=(ncomp, *magnet.grid.shape))
     term_value = term(world.timesolver.time)
@@ -179,8 +209,70 @@ def test_assign_vector_time_dependent_term_mask(
     assert magnet.bias_magnetic_field.is_uniform == False
     assert_almost_equal(magnet.bias_magnetic_field.eval(), expected_value2)
 
+    # correct mask shape with different components
+    test_mask3 = np.ones(shape=(ncomp, *magnet.grid.shape))
+    test_mask3[0, ...] = mask_values3[0]
+    test_mask3[1, ...] = mask_values3[1]
+    test_mask3[2, ...] = mask_values3[2]
+    expected_value3 = expected_value
+    expected_value3[0, ...] *= mask_values3[0]
+    expected_value3[1, ...] *= mask_values3[1]
+    expected_value3[2, ...] *= mask_values3[2]
+    magnet.bias_magnetic_field = (term, test_mask3)
+    assert magnet.bias_magnetic_field.is_dynamic == True
+    assert magnet.bias_magnetic_field.is_uniform == False
+    assert_almost_equal(magnet.bias_magnetic_field.eval(), expected_value3)
+
     # incorrect mask shape
     test_mask3 = np.ones(shape=(1, 4, 7, 3))
+    with pytest.raises(ValueError):
+        magnet.bias_magnetic_field = (term, test_mask3)
+
+
+def test_assign_vector_time_dependent_term_mask_func(
+    test_parameters: Tuple[World, Ferromagnet]
+):
+    world, magnet = test_parameters
+    ncomp = 3
+    mask_value1 = 0.2
+    mask_value2 = 0.8
+    mask_values3 = (0.1, 0.2, 0.3)
+    term = lambda t: (0, 1, 0.25 * np.sin(t))
+    expected_value = np.zeros(shape=(ncomp, *magnet.grid.shape))
+    term_value = term(world.timesolver.time)
+    expected_value[0, :, :, :] = term_value[0]
+    expected_value[1, :, :, :] = term_value[1]
+    expected_value[2, :, :, :] = term_value[2]
+
+    # correct mask shape
+    test_mask1 = lambda x, y, z: (mask_value1, mask_value1, mask_value1)
+    expected_value1 = mask_value1 * expected_value
+    magnet.bias_magnetic_field = (term, test_mask1)
+    assert magnet.bias_magnetic_field.is_dynamic == True
+    assert magnet.bias_magnetic_field.is_uniform == False
+    assert_almost_equal(magnet.bias_magnetic_field.eval(), expected_value1)
+
+    # correct mask without components
+    test_mask2 = lambda x, y, z: mask_value2
+    magnet.bias_magnetic_field = (term, test_mask2)
+    expected_value2 = mask_value2 * expected_value
+    assert magnet.bias_magnetic_field.is_dynamic == True
+    assert magnet.bias_magnetic_field.is_uniform == False
+    assert_almost_equal(magnet.bias_magnetic_field.eval(), expected_value2)
+
+    # correct mask shape with different components
+    test_mask3 = lambda x, y, z: mask_values3
+    expected_value3 = expected_value
+    expected_value3[0, ...] *= mask_values3[0]
+    expected_value3[1, ...] *= mask_values3[1]
+    expected_value3[2, ...] *= mask_values3[2]
+    magnet.bias_magnetic_field = (term, test_mask3)
+    assert magnet.bias_magnetic_field.is_dynamic == True
+    assert magnet.bias_magnetic_field.is_uniform == False
+    assert_almost_equal(magnet.bias_magnetic_field.eval(), expected_value3)
+
+    # incorrect mask shape
+    test_mask3 = lambda x, y, z: (mask_value1, mask_value2)
     with pytest.raises(ValueError):
         magnet.bias_magnetic_field = (term, test_mask3)
 

@@ -1,7 +1,7 @@
 #include "antiferromagnet.hpp"
 #include "cudalaunch.hpp"
 #include "elasticdamping.hpp"
-#include "elasticforce.hpp"
+#include "internalbodyforce.hpp"
 #include "elastodynamics.hpp"
 #include "ferromagnet.hpp"
 #include "field.hpp"
@@ -9,32 +9,32 @@
 #include "magnet.hpp"
 #include "magnetoelasticfield.hpp"
 #include "magnetoelasticforce.hpp"
+#include "ncafm.hpp"
 #include "parameter.hpp"
 
 
 bool elasticityAssuredZero(const Magnet* magnet) {
   return ((!magnet->enableElastodynamics()) ||
-          (magnet->c11.assuredZero() && magnet->c12.assuredZero() &&
-           magnet->c44.assuredZero()));
+          (magnet->C11.assuredZero() && magnet->C12.assuredZero() &&
+           magnet->C44.assuredZero()));
 }
 
 // ========== Effective Body Force ==========
 
 Field evalEffectiveBodyForce(const Magnet* magnet) {
-  Field fField(magnet->system(), 3, 0.0);
+  Field fField = evalInternalBodyForce(magnet);  // safely 0 if assuredZero
 
-  if (!elasticityAssuredZero(magnet))
-    fField += evalElasticForce(magnet);
   if (!magnet->externalBodyForce.assuredZero())
     fField += magnet->externalBodyForce;
 
-  if (const Antiferromagnet* afm = magnet->asAFM()) {
-    // add magnetoelastic force of both sublattices
-    for (const Ferromagnet* sub : afm->sublattices()) {
+  if (auto host = magnet->asHost()) {
+    // add magnetoelastic force of all sublattices
+    for (const Ferromagnet* sub : host->sublattices()) {
       if (!magnetoelasticAssuredZero(sub))
         fField += evalMagnetoelasticForce(sub);
     }
-  } else {
+  }
+  else {
     // add magnetoelastic force of independent ferromagnet
     const Ferromagnet* fm = magnet->asFM();
     if (!magnetoelasticAssuredZero(fm))

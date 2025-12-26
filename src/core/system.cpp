@@ -1,8 +1,10 @@
 #include "system.hpp"
 
 #include <algorithm>
+#include <array>
 #include <stdexcept>
 #include <set>
+#include <string>
 
 #include "datatypes.hpp"
 #include "gpubuffer.hpp"
@@ -10,7 +12,7 @@
 #include "reduce.hpp"
 #include "world.hpp"
 
-System::System(const World* world, Grid grid, GpuBuffer<bool> geometry, GpuBuffer<uint> regions)
+System::System(const World* world, Grid grid, GpuBuffer<bool> geometry, GpuBuffer<unsigned int> regions)
     : grid_(grid),
       world_(world),
       geometry_(geometry),
@@ -27,10 +29,15 @@ System::System(const World* world, Grid grid, GpuBuffer<bool> geometry, GpuBuffe
   }
   if (regions.size() != 0) {
     // Filter out unique region indices
-    std::vector<uint> regionsVec = regions.getData();
-    std::set<uint> uni(regionsVec.begin(), regionsVec.end()); // The order is of no importance
-    uniqueRegions = std::vector<uint>(uni.begin(), uni.end());
+    std::vector<unsigned int> regionsVec = regions.getData();
+    std::set<unsigned int> uni(regionsVec.begin(), regionsVec.end()); // The order is of no importance
+    uniqueRegions = std::vector<unsigned int>(uni.begin(), uni.end());
   }
+  if (geometry.size() != 0) {
+    std::vector<bool> v = geometry_.getData();
+    cellsInGeo_ = grid_.ncells() - std::count(v.begin(), v.end(), false);
+  }
+  else { cellsInGeo_ = grid_.ncells(); }
 }
 
 const World* System::world() const {
@@ -62,24 +69,29 @@ real3 System::center() const {
   return (corner2 + corner1) / 2;
 }
 
+std::array<real, 6> System::extent() const {
+  real3 minEdge = origin() - 0.5 * cellsize();
+  real3 maxEdge = minEdge + int3_to_real3(grid().size()) * cellsize();
+  return {minEdge.x, maxEdge.x, minEdge.y, maxEdge.y, minEdge.z, maxEdge.z};
+}
+
 const GpuBuffer<bool>& System::geometry() const {
   return geometry_;
 }
 
-const GpuBuffer<uint>& System::regions() const {
+const GpuBuffer<unsigned int>& System::regions() const {
   return regions_;
 }
 
 void System::checkIdxInRegions(int idx) const {
-  if (!idxInRegions(GpuBuffer<uint>(uniqueRegions), idx)) {
+  if (!idxInRegions(GpuBuffer<unsigned int>(uniqueRegions), idx)) {
     throw std::invalid_argument("The region index " + std::to_string(idx)
                                                    + " is not defined.");
   }
 }
 
-int System::cellsingeo() const {
-  std::vector<bool> v = geometry_.getData();
-  return grid_.ncells() - std::count(v.begin(), v.end(), false);
+int System::cellsInGeo() const {
+  return cellsInGeo_;
 }
 
 CuSystem System::cu() const {

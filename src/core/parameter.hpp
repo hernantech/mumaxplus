@@ -21,7 +21,7 @@ class Parameter : public FieldQuantity, public DynamicParameter<real> {
 
   void set(real value);
   void set(const Field& values);
-  void setInRegion(const uint region_idx, real value);
+  void setInRegion(const unsigned int region_idx, real value);
 
   bool isUniform() const;
   bool assuredZero() const;
@@ -121,7 +121,7 @@ class VectorParameter : public FieldQuantity, public DynamicParameter<real3> {
 
   void set(real3 value);
   void set(const Field& values);
-  void setInRegion(const uint region_idx, real3 value);
+  void setInRegion(const unsigned int region_idx, real3 value);
 
   bool isUniform() const;
   bool assuredZero() const;
@@ -161,6 +161,10 @@ struct CuVectorParameter {
  public:
   explicit CuVectorParameter(const VectorParameter*);
   __device__ bool isUniform() const;
+
+  __device__ real valueAt(int idx, int comp = 0) const;
+  __device__ real valueAt(int3 coo, int comp = 0) const;
+
   __device__ real3 vectorAt(int idx) const;
   __device__ real3 vectorAt(int3 coo) const;
 };
@@ -191,10 +195,29 @@ __device__ inline bool CuVectorParameter::isUniform() const {
   return !xValuesPtr;
 }
 
+__device__ inline real CuVectorParameter::valueAt(int idx, int comp) const {
+  real sv, dv;  // static and dynamic values
+  if (comp == 0) {  // x
+    sv = isUniform() ? uniformValue.x : xValuesPtr[idx];
+    dv = xDynamicValuesPtr ? xDynamicValuesPtr[idx] : 0.;
+  } else if (comp == 1) {  // y
+    sv = isUniform() ? uniformValue.y : yValuesPtr[idx];
+    dv = yDynamicValuesPtr ? yDynamicValuesPtr[idx] : 0.;
+  } else {  // z  comp == 2 (no safety checks)
+    sv = isUniform() ? uniformValue.z : zValuesPtr[idx];
+    dv = zDynamicValuesPtr ? zDynamicValuesPtr[idx] : 0.;
+  }
+  return sv + dv;
+}
+
+__device__ inline real CuVectorParameter::valueAt(int3 coo, int comp) const {
+  return valueAt(system.grid.coord2index(coo), comp);
+}
+
 __device__ inline real3 CuVectorParameter::vectorAt(int idx) const {
   if (isUniform()) {
     if (xDynamicValuesPtr && yDynamicValuesPtr && zDynamicValuesPtr) {
-      real3 dynamic_value{xValuesPtr[idx], yValuesPtr[idx], zValuesPtr[idx]};
+      real3 dynamic_value{xDynamicValuesPtr[idx], yDynamicValuesPtr[idx], zDynamicValuesPtr[idx]};
 
       return uniformValue + dynamic_value;
     }
@@ -203,7 +226,7 @@ __device__ inline real3 CuVectorParameter::vectorAt(int idx) const {
   } else {
     real3 static_value{xValuesPtr[idx], yValuesPtr[idx], zValuesPtr[idx]};
     if (xDynamicValuesPtr && yDynamicValuesPtr && zDynamicValuesPtr) {
-      real3 dynamic_value{xValuesPtr[idx], yValuesPtr[idx], zValuesPtr[idx]};
+      real3 dynamic_value{xDynamicValuesPtr[idx], yDynamicValuesPtr[idx], zDynamicValuesPtr[idx]};
 
       return static_value + dynamic_value;
     }

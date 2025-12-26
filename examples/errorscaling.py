@@ -143,7 +143,7 @@ for method in method_names:
     plt.scatter(dts[method], error, marker="o", zorder=2)
 
     intercept = np.polyfit(log_dts, log_error - log_dts * exact_order[method], 0)
-    plt.plot(np.array([1e-14, 1e-9]), (10**intercept)*np.array([1e-14, 1e-9])**exact_order[method], marker="o", label=f"{RK_names[method]} {exact_names[method]}")
+    plt.plot(np.array([1e-14, 1e-9]), (10**intercept)*np.array([1e-14, 1e-9])**exact_order[method], label=f"{RK_names[method]} {exact_names[method]}")
 
 
 #print(orders)  # Uncomment if you want to see the estimated orders

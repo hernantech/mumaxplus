@@ -3,6 +3,7 @@
 #include "reduce.hpp"
 
 #include <algorithm>
+#include <string>
 
 InterParameter::InterParameter(std::shared_ptr<const System> system,
                                real value, std::string name, std::string unit)
@@ -12,7 +13,7 @@ InterParameter::InterParameter(std::shared_ptr<const System> system,
       uniformValue_(value),
       valuesBuffer_() {
   size_t N = 1;  // at least 1 region: default 0
-  std::vector<uint> uni = system->uniqueRegions;
+  std::vector<unsigned int> uni = system->uniqueRegions;
   if (!uni.empty()) {
     N = *std::max_element(uni.begin(), uni.end()) + 1;
   }
@@ -25,13 +26,14 @@ const std::vector<real> InterParameter::eval() const {
   return valuesBuffer_.getData();
 }
 
-__global__ void k_set(real* values, real value) {
+__global__ void k_set(real* values, real value, size_t valuesLimit) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx < 0 || idx >= valuesLimit) { return; }
   values[idx] = value;
 }
 
 void InterParameter::setBuffer(real value) {
-  cudaLaunch(valuesLimit_, k_set, valuesBuffer_.get(), value);
+  cudaLaunch(valuesLimit_, k_set, valuesBuffer_.get(), value, valuesLimit_);
 }
 
 void InterParameter::set(real value) {
@@ -40,7 +42,7 @@ void InterParameter::set(real value) {
     valuesBuffer_.recycle();
 }
 
-void InterParameter::setBetween(uint i, uint j, real value) {
+void InterParameter::setBetween(unsigned int i, unsigned int j, real value) {
   system_->checkIdxInRegions(i);
   system_->checkIdxInRegions(j);
   if (i == j) {
@@ -69,7 +71,7 @@ real InterParameter::getUniformValue() const {
   return uniformValue_;
 }
 
-real InterParameter::getBetween(uint i, uint j) const {
+real InterParameter::getBetween(unsigned int i, unsigned int j) const {
   system_->checkIdxInRegions(i);
   system_->checkIdxInRegions(j);
   if (i == j) {

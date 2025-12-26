@@ -6,11 +6,7 @@ from .grid import Grid
 
 
 class FieldQuantity:
-    """A functor representing a physical field quantity.
-
-    The class wraps the C++ FieldQuantity class.
-    """
-
+    """A functor representing a physical field quantity."""
     def __init__(self, impl):
         self._impl = impl
 
@@ -22,12 +18,12 @@ class FieldQuantity:
         )
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Return instance's name."""
         return self._impl.name
 
     @property
-    def unit(self):
+    def unit(self) -> str:
         """Return the unit of the quantity.
 
         Returns
@@ -38,7 +34,7 @@ class FieldQuantity:
         return self._impl.unit
 
     @property
-    def ncomp(self):
+    def ncomp(self) -> int:
         """Return the number of components of the quantity.
 
         In most cases this would be either 1 (scalar field) or 3 (vector fields).
@@ -51,7 +47,7 @@ class FieldQuantity:
         return self._impl.ncomp
 
     @property
-    def grid(self):
+    def grid(self) -> Grid:
         """Return grid on which the quantity will be evaluated.
 
         Returns
@@ -80,15 +76,25 @@ class FieldQuantity:
         """Evaluate the quantity."""
         return self.eval()
 
-    def average(self):
+    def average(self) -> float:
         """Evaluate the quantity and return the average of each component."""
         # TODO add return type.
         return self._impl.average()
 
     def get_rgb(self):
         """Evaluate the vector field quantity and return its rgb representation
-        as a numpy ndarray of the same shape (ncomp, nz, ny, nx)."""
-        assert self.ncomp == 3 or self.ncomp == 6, \
+        as a numpy ndarray of the same shape (3, nz, ny, nx).
+        
+        Note
+        ----
+        The final color scheme is different from mumax³. In this case, the
+        saturation does not depend on the z-component anymore, meaning the z=0 plane
+        remains unchanged, but other colors will appear slightly less saturated.
+        This ensures that the color sphere is continuous everywhere, particularly
+        when crossing the xz- or yz-plane with a normalized length less than 1,
+        where the colors will fade through gray.
+        """
+        assert self.ncomp == 3, \
             "The rgb representation can only be calculated for vector fields."
         return self._impl.get_rgb().get()  # Field to ndarray
 

@@ -127,6 +127,45 @@ else()
 endif()
 
 # ============================================================================
+# Validation Test (Multi-GPU vs Single-GPU)
+# ============================================================================
+
+add_executable(validation_test validation_test.cu)
+
+if(HEFFTE_USE_IMPORTED_TARGET)
+    target_link_libraries(validation_test PRIVATE
+        MPI::MPI_CXX
+        CUDA::cudart
+        CUDA::cufft
+        Heffte::Heffte
+    )
+else()
+    target_include_directories(validation_test PRIVATE
+        ${MPI_CXX_INCLUDE_DIRS}
+        ${HEFFTE_INCLUDE_DIRS}
+    )
+    target_link_directories(validation_test PRIVATE
+        ${HEFFTE_LIBRARY_DIRS}
+    )
+    target_link_libraries(validation_test PRIVATE
+        MPI::MPI_CXX
+        CUDA::cudart
+        CUDA::cufft
+        heffte
+    )
+endif()
+
+if(CMAKE_CUDA_ARCHITECTURES)
+    set_target_properties(validation_test PROPERTIES
+        CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}"
+    )
+else()
+    set_target_properties(validation_test PROPERTIES
+        CUDA_ARCHITECTURES "75;86"
+    )
+endif()
+
+# ============================================================================
 # Halo Exchange Test (Phase 2)
 # ============================================================================
 
@@ -155,7 +194,7 @@ endif()
 # Installation
 # ============================================================================
 
-install(TARGETS heffte_poc halo_exchange_test
+install(TARGETS heffte_poc validation_test halo_exchange_test
     RUNTIME DESTINATION bin
 )
 
@@ -175,6 +214,15 @@ add_test(NAME heffte_poc_4gpu
     COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 $<TARGET_FILE:heffte_poc>
 )
 
+# Validation test: Multi-GPU vs Single-GPU comparison
+add_test(NAME validation_test_2gpu
+    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 $<TARGET_FILE:validation_test>
+)
+
+add_test(NAME validation_test_4gpu
+    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 $<TARGET_FILE:validation_test>
+)
+
 # ============================================================================
 # Summary
 # ============================================================================
@@ -190,4 +238,5 @@ message(STATUS "HeFFTe: ${HEFFTE_INCLUDE_DIRS}")
 message(STATUS "")
 message(STATUS "Build with: cmake --build .")
 message(STATUS "Test with:  mpirun -np 2 ./heffte_poc")
+message(STATUS "Validate:   mpirun -np 2 ./validation_test")
 message(STATUS "========================================")

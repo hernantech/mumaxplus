@@ -232,12 +232,22 @@ int main(int argc, char** argv) {
     // ========================================================================
     // HeFFTe uses inclusive index ranges: box3d<>{{low}, {high}}
     // Coordinates are (x, y, z) order
+    //
+    // For R2C FFT, the output in one dimension is halved (N -> N/2 + 1)
+    // We use r2c_direction = 0 (X dimension) since we decompose along Z
 
     heffte::box3d<> inbox  = {{0, 0, z_start}, {Nx-1, Ny-1, z_end}};
-    heffte::box3d<> outbox = inbox;  // Output same layout as input
+    // Output box: X dimension is halved for R2C
+    int out_Nx = Nx / 2 + 1;
+    heffte::box3d<> outbox = {{0, 0, z_start}, {out_Nx-1, Ny-1, z_end}};
+
+    // Direction for R2C reduction (0 = X dimension)
+    const int r2c_direction = 0;
 
     if (rank == 0) {
         std::cout << "\nCreating HeFFTe R2C plan..." << std::endl;
+        std::cout << "R2C direction: " << r2c_direction << " (X dimension)" << std::endl;
+        std::cout << "Output X size: " << out_Nx << " (from " << Nx << ")" << std::endl;
     }
 
     // ========================================================================
@@ -245,10 +255,12 @@ int main(int argc, char** argv) {
     // ========================================================================
     // R2C = Real-to-Complex (forward), C2R = Complex-to-Real (backward)
     // HeFFTe automatically determines optimal communication pattern
+    // Note: Requires CUDA-aware MPI for GPU-direct communication
 
     heffte::fft3d_r2c<heffte::backend::cufft> fft(
         inbox,              // Input box (real space, my slab)
-        outbox,             // Output box (real space, same layout)
+        outbox,             // Output box (freq space, X halved)
+        r2c_direction,      // Which dimension to halve
         MPI_COMM_WORLD      // Communicator
     );
 

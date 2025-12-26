@@ -1,4 +1,11 @@
 cmake_minimum_required(VERSION 3.18)
+
+# Set CUDA architectures before project() to avoid auto-detection issues
+# 75 = RTX 2070 (Turing), 86 = RTX A5000/3090 (Ampere)
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES "75;86")
+endif()
+
 project(mumaxplus_distributed_poc LANGUAGES CXX CUDA)
 
 # ============================================================================
@@ -33,9 +40,16 @@ message(STATUS "CUDA Toolkit: ${CUDAToolkit_VERSION}")
 # HeFFTe
 # Set HEFFTE_DIR if not in standard path:
 #   cmake -DHEFFTE_DIR=/path/to/heffte/install ..
+if(HEFFTE_DIR)
+    list(APPEND CMAKE_PREFIX_PATH "${HEFFTE_DIR}")
+    set(Heffte_DIR "${HEFFTE_DIR}/lib/cmake/Heffte")
+endif()
 find_package(Heffte QUIET)
 
-if(NOT Heffte_FOUND)
+if(Heffte_FOUND)
+    message(STATUS "HeFFTe found via CMake config")
+    set(HEFFTE_USE_IMPORTED_TARGET TRUE)
+else()
     # Try pkg-config as fallback
     find_package(PkgConfig)
     if(PkgConfig_FOUND)
@@ -77,27 +91,40 @@ endif()
 # HeFFTe Proof-of-Concept
 add_executable(heffte_poc heffte_poc.cu)
 
-target_include_directories(heffte_poc PRIVATE
-    ${MPI_CXX_INCLUDE_DIRS}
-    ${HEFFTE_INCLUDE_DIRS}
-)
-
-target_link_directories(heffte_poc PRIVATE
-    ${HEFFTE_LIBRARY_DIRS}
-)
-
-target_link_libraries(heffte_poc PRIVATE
-    MPI::MPI_CXX
-    CUDA::cudart
-    CUDA::cufft
-    heffte
-)
+if(HEFFTE_USE_IMPORTED_TARGET)
+    target_link_libraries(heffte_poc PRIVATE
+        MPI::MPI_CXX
+        CUDA::cudart
+        CUDA::cufft
+        Heffte::Heffte
+    )
+else()
+    target_include_directories(heffte_poc PRIVATE
+        ${MPI_CXX_INCLUDE_DIRS}
+        ${HEFFTE_INCLUDE_DIRS}
+    )
+    target_link_directories(heffte_poc PRIVATE
+        ${HEFFTE_LIBRARY_DIRS}
+    )
+    target_link_libraries(heffte_poc PRIVATE
+        MPI::MPI_CXX
+        CUDA::cudart
+        CUDA::cufft
+        heffte
+    )
+endif()
 
 # Set CUDA architectures (adjust for your GPU)
-# 70 = V100, 80 = A100, 86 = RTX 3090, 89 = RTX 4090
-set_target_properties(heffte_poc PROPERTIES
-    CUDA_ARCHITECTURES "70;80;86"
-)
+# 75 = RTX 2070, 80 = A100, 86 = RTX 3090/A5000, 89 = RTX 4090
+if(CMAKE_CUDA_ARCHITECTURES)
+    set_target_properties(heffte_poc PROPERTIES
+        CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}"
+    )
+else()
+    set_target_properties(heffte_poc PROPERTIES
+        CUDA_ARCHITECTURES "75;86"
+    )
+endif()
 
 # ============================================================================
 # Halo Exchange Test (Phase 2)
@@ -114,9 +141,15 @@ target_link_libraries(halo_exchange_test PRIVATE
     CUDA::cudart
 )
 
-set_target_properties(halo_exchange_test PROPERTIES
-    CUDA_ARCHITECTURES "70;80;86"
-)
+if(CMAKE_CUDA_ARCHITECTURES)
+    set_target_properties(halo_exchange_test PROPERTIES
+        CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}"
+    )
+else()
+    set_target_properties(halo_exchange_test PROPERTIES
+        CUDA_ARCHITECTURES "75;86"
+    )
+endif()
 
 # ============================================================================
 # Installation

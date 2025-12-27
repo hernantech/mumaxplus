@@ -16,9 +16,9 @@
  */
 
 #include "distributedgrid.hpp"
+#include "mpicontext.hpp"  // Includes mpi.h with C++ bindings disabled
 #include "core/datatypes.hpp"
 
-#include <mpi.h>
 #include <vector>
 
 namespace mumaxplus {

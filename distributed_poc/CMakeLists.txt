@@ -25,8 +25,13 @@ endif()
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CUDA_FLAGS_RELEASE "-O3")
 
-# CUDA 11.x + GCC 11 compatibility flags
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
+# CUDA 11.x + GCC 11 compatibility: use older GCC for CUDA host compiler if available
+# GCC 11 has std::function issues with CUDA 11.x
+find_program(GCC10_CXX g++-10)
+if(GCC10_CXX AND CMAKE_CUDA_COMPILER_VERSION VERSION_LESS "12.0")
+    message(STATUS "Using g++-10 as CUDA host compiler for CUDA 11.x compatibility")
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -ccbin ${GCC10_CXX}")
+endif()
 
 # ============================================================================
 # Find Dependencies

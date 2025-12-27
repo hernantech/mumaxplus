@@ -76,7 +76,6 @@ __global__ void k_laplacian_interior(const float* in, float* out,
     int z = idx / (Nx * Ny);
 
     // Map to padded coordinates (skip lower halo)
-    int padded_Nz = local_Nz + 2 * halo_size;
     int pz = z + halo_size;
 
     // Padded index
@@ -131,6 +130,7 @@ public:
     int Nx, Ny, local_Nz;
     int halo_size;
     size_t plane_size;  // Elements per Z-plane
+    int padded_Nz;      // Total Z including halos
 
     float* h_send_lower;
     float* h_send_upper;
@@ -141,6 +141,7 @@ public:
         : rank(r), num_ranks(nr), Nx(nx), Ny(ny), local_Nz(lnz), halo_size(hs) {
 
         plane_size = (size_t)Nx * Ny * halo_size;
+        padded_Nz = local_Nz + 2 * halo_size;
 
         CUDA_CHECK(cudaMallocHost(&h_send_lower, plane_size * sizeof(float)));
         CUDA_CHECK(cudaMallocHost(&h_send_upper, plane_size * sizeof(float)));
@@ -156,7 +157,6 @@ public:
     }
 
     void exchange(float* d_field) {
-        int padded_Nz = local_Nz + 2 * halo_size;
         size_t plane_bytes = plane_size * sizeof(float);
 
         // Copy boundary planes to host
@@ -380,17 +380,28 @@ int main(int argc, char** argv) {
     // Compute Statistics
     // ========================================================================
 
-    auto stats = [](std::vector<double>& v) -> std::tuple<double, double, double> {
+    // Helper struct for stats (C++14 compatible)
+    struct Stats {
+        double min_val, max_val, avg_val;
+    };
+
+    auto compute_stats = [](std::vector<double>& v) -> Stats {
         std::sort(v.begin(), v.end());
         double sum = std::accumulate(v.begin(), v.end(), 0.0);
         return {v.front(), v.back(), sum / v.size()};
     };
 
-    auto [fwd_min, fwd_max, fwd_avg] = stats(fft_forward_times);
-    auto [bwd_min, bwd_max, bwd_avg] = stats(fft_backward_times);
-    auto [ker_min, ker_max, ker_avg] = stats(fft_kernel_times);
-    auto [halo_min, halo_max, halo_avg] = stats(halo_times);
-    auto [sten_min, sten_max, sten_avg] = stats(stencil_times);
+    Stats fwd_stats = compute_stats(fft_forward_times);
+    Stats bwd_stats = compute_stats(fft_backward_times);
+    Stats ker_stats = compute_stats(fft_kernel_times);
+    Stats halo_stats = compute_stats(halo_times);
+    Stats sten_stats = compute_stats(stencil_times);
+
+    double fwd_min = fwd_stats.min_val, fwd_max = fwd_stats.max_val, fwd_avg = fwd_stats.avg_val;
+    double bwd_min = bwd_stats.min_val, bwd_max = bwd_stats.max_val, bwd_avg = bwd_stats.avg_val;
+    double ker_avg = ker_stats.avg_val;
+    double halo_min = halo_stats.min_val, halo_max = halo_stats.max_val, halo_avg = halo_stats.avg_val;
+    double sten_avg = sten_stats.avg_val;
 
     // Gather global stats
     double global_fwd_avg, global_bwd_avg, global_halo_avg, global_sten_avg;

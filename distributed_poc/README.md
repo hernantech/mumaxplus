@@ -109,6 +109,8 @@ Global Max Halo Error: 0
 |------|---------|
 | `heffte_poc.cu` | Validates distributed FFT convolution (demagnetization) |
 | `halo_exchange_test.cu` | Validates MPI halo exchange for stencil operations |
+| `validation_test.cu` | Compares multi-GPU HeFFTe vs single-GPU cuFFT results |
+| `benchmark_test.cu` | Measures communication overhead and scaling |
 | `CMakeLists.txt` | Build configuration |
 
 ### Data Layout
@@ -140,12 +142,54 @@ Buffer layout for one Z-slab:
    - MPI_Allreduce on scalars (max error)
    - Ensures all ranks use same timestep
 
+## Benchmark Results
+
+Tested on 2x NVIDIA RTX A5000 GPUs with CUDA-aware OpenMPI 5.0.6.
+
+### 128³ Grid (2 GPUs)
+
+| Operation | Time (ms) | Notes |
+|-----------|-----------|-------|
+| Forward FFT | 8.5 | Includes AllToAll transpose |
+| Backward FFT | 8.7 | Includes AllToAll transpose |
+| Kernel Apply | 0.02 | Negligible |
+| **FFT Cycle Total** | **17.3** | |
+| Halo Exchange | 0.37 | 0.26 MB per rank |
+| Stencil Compute | 0.03 | |
+
+**Communication overhead**: FFT ~99.9%, Halo ~92%
+
+**RK45 timestep estimate**: 106 ms (9.4 steps/sec)
+
+### 256³ Grid (2 GPUs)
+
+| Operation | Time (ms) | Notes |
+|-----------|-----------|-------|
+| Forward FFT | 60.6 | Includes AllToAll transpose |
+| Backward FFT | 61.3 | Includes AllToAll transpose |
+| Kernel Apply | 0.12 | Negligible |
+| **FFT Cycle Total** | **121.9** | |
+| Halo Exchange | 2.15 | 1.05 MB per rank |
+| Stencil Compute | 0.16 | |
+
+**Communication overhead**: FFT ~99.9%, Halo ~93%
+
+**RK45 timestep estimate**: 745 ms (1.3 steps/sec)
+
+### Key Findings
+
+1. **FFT dominates**: Communication (AllToAll transpose) is ~99.9% of FFT time
+2. **Halo exchange is fast**: <3ms even for 256³ grids
+3. **Memory per rank**: ~21 MB (128³) to ~169 MB (256³)
+4. **Validation**: Multi-GPU produces identical results to single-GPU (zero error)
+
 ## Integration Roadmap
 
-### Phase 1: Validate PoC (This directory)
+### Phase 1: Validate PoC (This directory) ✅ Complete
 - [x] HeFFTe distributed FFT
 - [x] Halo exchange mechanism
-- [ ] Benchmark communication overhead
+- [x] Multi-GPU vs single-GPU validation (zero error)
+- [x] Benchmark communication overhead
 
 ### Phase 2: Create Infrastructure
 - [ ] `DistributedField` class with padded buffers
@@ -187,6 +231,13 @@ Use explicit device binding:
 ```bash
 mpirun -np 4 --map-by ppr:1:gpu ./heffte_poc
 ```
+
+### CUDA 11.x + GCC 11 compilation errors
+If you see `std::function` parameter pack errors, install g++-10:
+```bash
+sudo apt install g++-10
+```
+CMake will automatically use it as the CUDA host compiler.
 
 ## Performance Tips
 

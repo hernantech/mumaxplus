@@ -191,10 +191,49 @@ else()
 endif()
 
 # ============================================================================
+# Communication Benchmark Test
+# ============================================================================
+
+add_executable(benchmark_test benchmark_test.cu)
+
+if(HEFFTE_USE_IMPORTED_TARGET)
+    target_link_libraries(benchmark_test PRIVATE
+        MPI::MPI_CXX
+        CUDA::cudart
+        CUDA::cufft
+        Heffte::Heffte
+    )
+else()
+    target_include_directories(benchmark_test PRIVATE
+        ${MPI_CXX_INCLUDE_DIRS}
+        ${HEFFTE_INCLUDE_DIRS}
+    )
+    target_link_directories(benchmark_test PRIVATE
+        ${HEFFTE_LIBRARY_DIRS}
+    )
+    target_link_libraries(benchmark_test PRIVATE
+        MPI::MPI_CXX
+        CUDA::cudart
+        CUDA::cufft
+        heffte
+    )
+endif()
+
+if(CMAKE_CUDA_ARCHITECTURES)
+    set_target_properties(benchmark_test PROPERTIES
+        CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}"
+    )
+else()
+    set_target_properties(benchmark_test PROPERTIES
+        CUDA_ARCHITECTURES "75;86"
+    )
+endif()
+
+# ============================================================================
 # Installation
 # ============================================================================
 
-install(TARGETS heffte_poc validation_test halo_exchange_test
+install(TARGETS heffte_poc validation_test halo_exchange_test benchmark_test
     RUNTIME DESTINATION bin
 )
 
@@ -221,6 +260,11 @@ add_test(NAME validation_test_2gpu
 
 add_test(NAME validation_test_4gpu
     COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 $<TARGET_FILE:validation_test>
+)
+
+# Benchmark test
+add_test(NAME benchmark_test_2gpu
+    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 $<TARGET_FILE:benchmark_test> 128 20
 )
 
 # ============================================================================

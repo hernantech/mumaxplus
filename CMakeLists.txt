@@ -26,3 +26,9 @@ add_subdirectory(src/core)
 add_subdirectory(src/cudautil)
 add_subdirectory(src/linsolver)
 add_subdirectory(src/physics)
+
+# Optional: Distributed multi-GPU support
+option(ENABLE_DISTRIBUTED "Enable distributed multi-GPU support (requires MPI)" OFF)
+if(ENABLE_DISTRIBUTED)
+    add_subdirectory(src/distributed)
+endif()

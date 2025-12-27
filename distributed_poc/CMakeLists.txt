@@ -25,6 +25,9 @@ endif()
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CUDA_FLAGS_RELEASE "-O3")
 
+# CUDA 11.x + GCC 11 compatibility flags
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
+
 # ============================================================================
 # Find Dependencies
 # ============================================================================

@@ -20,11 +20,8 @@
  *   }
  */
 
+#include <mpi.h>
 #include <string>
-
-// Forward declare MPI types to avoid including mpi.h in header
-typedef int MPI_Comm;
-typedef int MPI_Datatype;
 
 namespace mumaxplus {
 

@@ -18,10 +18,8 @@
 #include "distributedgrid.hpp"
 #include "core/datatypes.hpp"
 
+#include <mpi.h>
 #include <vector>
-
-// Forward declarations
-typedef struct ompi_request_t* MPI_Request;
 
 namespace mumaxplus {
 

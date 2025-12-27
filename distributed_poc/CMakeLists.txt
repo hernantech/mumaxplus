@@ -25,12 +25,20 @@ endif()
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CUDA_FLAGS_RELEASE "-O3")
 
-# CUDA 11.x + GCC 11 compatibility: use older GCC for CUDA host compiler if available
+# CUDA 11.x + GCC 11 compatibility workarounds
 # GCC 11 has std::function issues with CUDA 11.x
 find_program(GCC10_CXX g++-10)
+find_program(GCC9_CXX g++-9)
 if(GCC10_CXX AND CMAKE_CUDA_COMPILER_VERSION VERSION_LESS "12.0")
     message(STATUS "Using g++-10 as CUDA host compiler for CUDA 11.x compatibility")
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -ccbin ${GCC10_CXX}")
+elseif(GCC9_CXX AND CMAKE_CUDA_COMPILER_VERSION VERSION_LESS "12.0")
+    message(STATUS "Using g++-9 as CUDA host compiler for CUDA 11.x compatibility")
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -ccbin ${GCC9_CXX}")
+elseif(CMAKE_CUDA_COMPILER_VERSION VERSION_LESS "12.0")
+    # Fallback: add flags to work around GCC 11 issues
+    message(STATUS "CUDA 11.x with GCC 11 detected - adding compatibility flags")
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr -Xcompiler -fno-tree-loop-distribute-patterns")
 endif()
 
 # ============================================================================

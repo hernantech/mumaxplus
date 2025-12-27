@@ -380,28 +380,28 @@ int main(int argc, char** argv) {
     // Compute Statistics
     // ========================================================================
 
-    // Helper struct for stats (C++14 compatible)
-    struct Stats {
-        double min_val, max_val, avg_val;
-    };
+    // Compute statistics for each timing vector
+    std::sort(fft_forward_times.begin(), fft_forward_times.end());
+    std::sort(fft_backward_times.begin(), fft_backward_times.end());
+    std::sort(fft_kernel_times.begin(), fft_kernel_times.end());
+    std::sort(halo_times.begin(), halo_times.end());
+    std::sort(stencil_times.begin(), stencil_times.end());
 
-    auto compute_stats = [](std::vector<double>& v) -> Stats {
-        std::sort(v.begin(), v.end());
-        double sum = std::accumulate(v.begin(), v.end(), 0.0);
-        return {v.front(), v.back(), sum / v.size()};
-    };
+    double fwd_min = fft_forward_times.front();
+    double fwd_max = fft_forward_times.back();
+    double fwd_avg = std::accumulate(fft_forward_times.begin(), fft_forward_times.end(), 0.0) / iterations;
 
-    Stats fwd_stats = compute_stats(fft_forward_times);
-    Stats bwd_stats = compute_stats(fft_backward_times);
-    Stats ker_stats = compute_stats(fft_kernel_times);
-    Stats halo_stats = compute_stats(halo_times);
-    Stats sten_stats = compute_stats(stencil_times);
+    double bwd_min = fft_backward_times.front();
+    double bwd_max = fft_backward_times.back();
+    double bwd_avg = std::accumulate(fft_backward_times.begin(), fft_backward_times.end(), 0.0) / iterations;
 
-    double fwd_min = fwd_stats.min_val, fwd_max = fwd_stats.max_val, fwd_avg = fwd_stats.avg_val;
-    double bwd_min = bwd_stats.min_val, bwd_max = bwd_stats.max_val, bwd_avg = bwd_stats.avg_val;
-    double ker_avg = ker_stats.avg_val;
-    double halo_min = halo_stats.min_val, halo_max = halo_stats.max_val, halo_avg = halo_stats.avg_val;
-    double sten_avg = sten_stats.avg_val;
+    double ker_avg = std::accumulate(fft_kernel_times.begin(), fft_kernel_times.end(), 0.0) / iterations;
+
+    double halo_min = halo_times.front();
+    double halo_max = halo_times.back();
+    double halo_avg = std::accumulate(halo_times.begin(), halo_times.end(), 0.0) / iterations;
+
+    double sten_avg = std::accumulate(stencil_times.begin(), stencil_times.end(), 0.0) / iterations;
 
     // Gather global stats
     double global_fwd_avg, global_bwd_avg, global_halo_avg, global_sten_avg;
@@ -417,7 +417,6 @@ int main(int argc, char** argv) {
     if (rank == 0) {
         double total_fft_time = global_fwd_avg + ker_avg + global_bwd_avg;
         double fft_comm_time = global_fwd_avg + global_bwd_avg;  // Dominated by AllToAll
-        double fft_compute_time = ker_avg;
 
         double halo_bytes = halo.bytes_exchanged() * num_ranks;
         double halo_bw_gbps = (halo_bytes / 1e9) / (global_halo_avg / 1000.0);

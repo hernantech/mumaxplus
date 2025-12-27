@@ -191,10 +191,38 @@ Tested on 2x NVIDIA RTX A5000 GPUs with CUDA-aware OpenMPI 5.0.6.
 - [x] Multi-GPU vs single-GPU validation (zero error)
 - [x] Benchmark communication overhead
 
-### Phase 2: Create Infrastructure
-- [ ] `DistributedField` class with padded buffers
-- [ ] `HaloExchange` service
-- [ ] `MPIContext` singleton
+### Phase 2: Infrastructure Classes ✅ Complete
+Located in `src/distributed/`:
+
+| File | Description |
+|------|-------------|
+| `mpicontext.hpp/cu` | MPI singleton - initialization, GPU binding, Z-slab decomposition |
+| `distributedgrid.hpp/cu` | Grid management - local/global coordinate mapping, halo padding |
+| `haloexchanger.hpp/cu` | MPI halo exchange - sync/async, CUDA-aware MPI detection |
+| `test_infrastructure.cu` | Validation test for all infrastructure classes |
+| `CMakeLists.txt` | Build configuration with MPI/HeFFTe integration |
+
+**Build & Test:**
+```bash
+cd mumaxplus
+mkdir build-distributed && cd build-distributed
+cmake -DENABLE_DISTRIBUTED=ON -DHEFFTE_DIR=$HOME/heffte -DCMAKE_CUDA_ARCHITECTURES=86 ..
+make test_infrastructure
+mpirun -np 2 ./src/distributed/test_infrastructure
+```
+
+**Test Results (2x RTX A5000):**
+```
+===================================
+Distributed Infrastructure Tests
+Grid: 64x64x32, Ranks: 2
+===================================
+Test 1: MPIContext      - PASS
+Test 2: DistributedGrid - PASS
+Test 3: HaloExchanger   - PASS
+===================================
+All tests PASSED
+```
 
 ### Phase 3: Integrate with mumax+
 - [ ] Replace `StrayFieldFFTExecutor` with HeFFTe

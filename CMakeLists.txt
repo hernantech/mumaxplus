@@ -15,7 +15,10 @@ if (WIN32)
     set(CMAKE_CUDA_RESOLVE_DEVICE_SYMBOLS TRUE)
 endif()
 
-set(CMAKE_CUDA_ARCHITECTURES native)
+# CUDA architecture: use command line -DCMAKE_CUDA_ARCHITECTURES=XX or default to native
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES native)
+endif()
 
 add_definitions(-DFP_PRECISION=SINGLE) # FP_PRECISION should be SINGLE or DOUBLE
 add_definitions(-D_USE_MATH_DEFINES) # Needed for cmath constants on Windows
